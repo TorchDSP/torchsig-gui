@@ -1,0 +1,74 @@
+{
+  "num_iq_samples_dataset": {
+    "label": "Total I/Q Samples",
+    "hint": "Test hint"
+  },
+  "fft_size": {
+    "label": "FFT Size",
+    "hint": ""
+  },
+  "fft_stride": {
+    "label": "FFT Stride",
+    "hint": ""
+  },
+  "sample_rate": {
+    "label": "Sample Rate",
+    "hint": ""
+  },
+  "cochannel_overlap_probability": {
+    "label": "Co-Channel Overlap Probability",
+    "hint": ""
+  },
+  "num_signals_min": {
+    "label": "Signal Count Min",
+    "hint": ""
+  },
+  "num_signals_max": {
+    "label": "Signal Count Max",
+    "hint": ""
+  },
+  "snr_db_min": {
+    "label": "SNR DB Min",
+    "hint": ""
+  },
+  "snr_db_max": {
+    "label": "SNR DB Max",
+    "hint": ""
+  },
+  "signal_duration_in_samples_min": {
+    "label": "Sample Signal Duration Min",
+    "hint": ""
+  },
+  "signal_duration_in_samples_max": {
+    "label": "Sample Signal Duration Max",
+    "hint": ""
+  },
+  "bandwidth_min": {
+    "label": "Bandwidth Min",
+    "hint": ""
+  },
+  "bandwidth_max": {
+    "label": "Bandwidth Max",
+    "hint": ""
+  },
+  "signal_center_freq_min": {
+    "label": "Signal Center Frequency Min",
+    "hint": ""
+  },
+  "signal_center_freq_max": {
+    "label": "Signal Center Frequency Max",
+    "hint": ""
+  },
+  "frequency_min": {
+    "label": "Frequency Min",
+    "hint": ""
+  },
+  "frequency_max": {
+    "label": "Frequency Max",
+    "hint": ""
+  },
+  "noise_power_db": {
+    "label": "Noise Power (dB)",
+    "hint": ""
+  }
+}

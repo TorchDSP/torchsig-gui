@@ -1,0 +1,6 @@
+{
+  "impairments": {
+    "label": "Impairments",
+    "hint": "The default transforms to apply to simulate a given environment."
+  }
+}

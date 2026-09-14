@@ -1,0 +1,39 @@
+{
+  "metadata": {
+    "num_iq_samples_dataset": 262144,
+    "num_signals_min": 1,
+    "num_signals_max": 1,
+    "fft_size": 512,
+    "fft_stride": 512,
+    "sample_rate": 10000000,
+    "noise_power_db": 0,
+    "snr_db_min": 0,
+    "snr_db_max": 50,
+    "cochannel_overlap_probability": 0.2,
+    "signal_duration_in_samples_min": 209715.2,
+    "signal_duration_in_samples_max": 262144,
+    "bandwidth_min": 2500000,
+    "bandwidth_max": 3333333,
+    "signal_center_freq_min": -2500000,
+    "signal_center_freq_max": 2499999,
+    "frequency_min": -2500000,
+    "frequency_max": 2499999
+  },
+  "generation": {
+    "impairments": 0,
+    "generators": [
+      {
+        "id": "all",
+        "likelihood": 1
+      }
+    ]
+  },
+  "transforms": [],
+  "seed": 1234,
+  "dataset": {
+    "overwrite": true,
+    "multithreading": false,
+    "length": 10,
+    "root": "test_tmp"
+  }
+}

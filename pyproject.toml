@@ -1,0 +1,87 @@
+[build-system]
+# Define build dependencies and backend
+requires = ["setuptools>=61", "build"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "torchsiggui"
+description = "Signal Processing Machine Learning Toolkit"
+authors = [
+  {name = "TorchSig Team"},
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT AND Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause"
+license-files = [
+  "LICENSE.md",
+  "licenses/LICENSE*"
+]
+keywords = ["signal processing", "machine learning"]
+dynamic = ["version"]
+
+classifiers = [
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+]
+# Runtime dependencies
+dependencies = [
+  # Core
+  "fastapi",
+  "torch",
+  "torchsig",
+  "aiofiles",
+  "aiosql",
+  "aiosqlite",
+  "filelock",
+  "h5py",
+  "matplotlib",
+  "numpy",
+  "nanoid",
+  "psutil",
+  "pydantic_settings",
+  "PyYAML",
+  "uvicorn[standard]",
+  # Testing, CI/CD
+  "pytest",
+  "pytest_asyncio",
+  "pytest-timeout",
+  "pytest-cov",
+  "httpx2",
+]
+
+# [project.urls]
+# TODO: Add these later
+
+[project.scripts]
+torchsiggui = "torchsiggui.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+files = ["*.sql"]
+webbuild = ["*"]
+
+[tool.setuptools.dynamic]
+# Dynamically read version from torchsiggui.__version__
+version = {attr = "torchsiggui.__version__"}
+
+[tool.coverage.run]
+branch = true
+source = ["torchsiggui"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+omit = []
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+filterwarnings = [
+  "ignore:.*The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead..*:DeprecationWarning"
+]
+markers = [
+  "full: marks tests as full (run with --full option)",
+]
+addopts = "-m 'not full' --cov=torchsig --cov-report=xml --cov-report=term-missing --junitxml=report.xml"
+testpaths = ["testing"]

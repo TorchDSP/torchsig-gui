@@ -1,0 +1,22 @@
+{
+  "seed": {
+    "label": "Seed",
+    "hint": "The randomizer seed. Leave blank to use a random seed."
+  },
+  "dataset_length": {
+    "label": "Dataset Length",
+    "hint": "The amount of signals contained in the dataset."
+  },
+  "filename": {
+    "label": "File Name",
+    "hint": "The file name that the dataset will be saved as."
+  },
+  "overwrite": {
+    "label": "Overwrite",
+    "hint": "Whether to overwrite an existing dataset."
+  },
+  "multithreading": {
+    "label": "Multithreading",
+    "hint": "Whether to use multithreading while generating the dataset."
+  }
+}
