@@ -49,9 +49,9 @@ export default function DownloadList({ downloadMap }: { downloadMap: RecordMap<D
   const [ cancel, {} ] = usePostCancelDatasetMutation();
 
   // Create the list of download items in the list, based on the map contents
-  let downloadList: React.ReactNode[] = [];
+  const downloadList: React.ReactNode[] = [];
   Object.entries(downloadMap).forEach(([downloadID, download]) => {
-    let downloadItem = <DownloadItem key={downloadID} downloadID={downloadID} download={download} cancelFunc={cancel}/>;
+    const downloadItem = <DownloadItem key={downloadID} downloadID={downloadID} download={download} cancelFunc={cancel}/>;
     downloadList.push(downloadItem);
   });
 

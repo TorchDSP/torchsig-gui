@@ -2,21 +2,16 @@ import torchsiggui.app_lookup as app_lookup
 from torchsiggui.app_write_dataset import create_dataset_file
 from torchsiggui.app_write_spectrogram import create_sample_image
 
-from torchsiggui.files.file_io import DATASET_FOLDER, MODULE_LOCK_FILE, WEBBUILD_FOLDER
+from torchsiggui.files.file_io import DATASET_FOLDER
 from torchsiggui.files.database_io import (
   run_query,
   queries,
-  get_worker_info,
   get_file_info
 )
 
 import aiofiles
-import psutil
 
 from asyncio import sleep, create_task
-from contextlib import asynccontextmanager
-from filelock import FileLock
-from os import makedirs, getpid
 from pathlib import Path
 from shutil import rmtree
 from typing import AsyncGenerator
@@ -30,7 +25,6 @@ from fastapi import (
   HTTPException
 )
 from fastapi.responses import StreamingResponse
-from fastapi.staticfiles import StaticFiles
 
 # Creates a router to store the server routes
 router = APIRouter()
@@ -212,7 +206,7 @@ async def websocket_endpoint(websocket: WebSocket):
   # Constantly check for messages from the client
   try:
     while True:
-      msg = await websocket.receive_text()
+      await websocket.receive_text()
 
   # Exit the loop when the client disconnects
   except WebSocketDisconnect:

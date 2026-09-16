@@ -50,7 +50,7 @@ async def test_get_download_dataset_response_success(affixed_client, affixed_tes
 
   # The file inside should be a HDF5 file
   reader = HDF5Reader(DATASET_FOLDER / test_folder)
-  signal = reader.read(0)
+  reader.read(0)
   reader.teardown()
 
 @pytest.mark.asyncio

@@ -1,10 +1,13 @@
 {
   "name": "torchsiggui",
-  "version": "0.0.1-alpha",
+  "version": "0.0.1",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "NEXT_STATIC_BUILD=webbuild next build",
+    "build": "NEXT_STATIC_BUILD=torchsiggui/webbuild next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -24,7 +27,10 @@
     "@types/node": "^26.4.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
-    "typescript": "^7.0.2"
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.4",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "overrides": {
     "postcss": "^8.5.24",

@@ -1,5 +1,5 @@
 from torchsiggui.app import router
-from torchsiggui.files.file_io import DATASET_FOLDER, MODULE_LOCK_FILE, WEBBUILD_FOLDER
+from torchsiggui.files.file_io import DATASET_FOLDER, WEBBUILD_FOLDER
 from torchsiggui.files.database_io import (
   run_query,
   queries,
@@ -11,7 +11,6 @@ import psutil
 import uvicorn
 
 from contextlib import asynccontextmanager
-from filelock import FileLock
 from importlib.metadata import version, PackageNotFoundError
 from os import makedirs, getpid
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -71,6 +70,18 @@ def get_config():
 # FASTAPI INITIALIZATION
 # Handles the creation of server application instances
 
+# Removes the database records of workers that are no longer running
+async def remove_crashed_workers():
+  worker_map = await get_worker_info()
+  for worker in worker_map:
+    try:
+      process = psutil.Process(worker['pid'])
+      crashed = not process.is_running() or process.create_time() != worker['created']
+    except psutil.NoSuchProcess:
+      crashed = True
+    if crashed:
+      await run_query(queries.delete_worker_entry, process_id=worker['pid'])
+
 # Wraps server startup and shutdown tasks for each worker
 @asynccontextmanager
 async def startup_shutdown(app: FastAPI):
@@ -83,12 +94,8 @@ async def startup_shutdown(app: FastAPI):
   makedirs(DATASET_FOLDER, exist_ok=True)
   await run_query(queries.create_database)
 
-  # Get the current set of worker processes and remove any records of crashed workers
-  worker_map = await get_worker_info()
-  for worker in worker_map:
-    process = psutil.Process(worker['pid'])
-    if not process.is_running() or process.create_time() != worker['created']:
-      run_query(queries.delete_worker_entry, process_id=worker['pid'])
+  # Remove any records of crashed workers
+  await remove_crashed_workers()
 
   # Add a new worker record for this worker
   pid = getpid()
@@ -105,12 +112,8 @@ async def startup_shutdown(app: FastAPI):
   # Acquire a lock so that other workers do not interfere with shutdown for this worker
   # with lock:
 
-  # Get the current set of worker processes and remove any records of crashed workers
-  worker_map = await get_worker_info()
-  for worker in worker_map:
-    process = psutil.Process(worker['pid'])
-    if not process.is_running() or process.create_time() != worker['created']:
-      run_query(queries.delete_worker_entry, process_id=worker['pid'])
+  # Remove any records of crashed workers
+  await remove_crashed_workers()
 
   # Remove the record for this worker from the database
   pid = getpid()

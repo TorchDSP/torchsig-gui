@@ -7,9 +7,15 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"
 // Updates the base URL by what mode the webpage is running on
 const baseUrl = process.env.NODE_ENV === "development" ? "http://localhost:8000" : "";
 
-// Updates the websocket port by what mode the webpage is running on
-const prodPort = (typeof window === "undefined") ? "8000" : window.location.port;
-const wsPort = process.env.NODE_ENV === "development" ? "8000" : prodPort;
+// Builds the websocket URL by what mode the webpage is running on
+// - In production, the server hosting the page also hosts the websocket, so use the page's own host and protocol
+function buildWebSocketLink() {
+  if (process.env.NODE_ENV === "development") {
+    return "ws://localhost:8000/ws";
+  }
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return protocol + "//" + window.location.host + "/ws";
+}
 
 // Defines the API slice object
 export const apiSlice = createApi({
@@ -33,21 +39,21 @@ export const apiSlice = createApi({
     getDatasetDefaults: builder.query<DatasetDetails, void>({
       query: () => "/dataset-defaults"
     }),
-    postWriteSample: builder.mutation<any, any>({
+    postWriteSample: builder.mutation<unknown, unknown>({
       query: (fullData) => ({
         url: "/write-sample",
         method: "POST",
         body: fullData
       })
     }),
-    postWriteDataset: builder.mutation<any, any>({
+    postWriteDataset: builder.mutation<unknown, unknown>({
       query: (fullData) => ({
         url: "/write-dataset",
         method: "POST",
         body: fullData
       })
     }),
-    postCancelDataset: builder.mutation<any, string>({
+    postCancelDataset: builder.mutation<unknown, string>({
       query: (fileID) => ({
         url: "/cancel-dataset/" + fileID,
         method: "DELETE"
@@ -63,7 +69,7 @@ export const apiSlice = createApi({
       // Manage a websocket to watch for updates from the server
       async onCacheEntryAdded(_arg, { cacheDataLoaded, cacheEntryRemoved, updateCachedData }) {
         // Create a websocket connection when the cache subscription starts
-        const ws = new WebSocket("ws://localhost:" + wsPort + "/ws");
+        const ws = new WebSocket(buildWebSocketLink());
 
         try {
           // Wait for the initial query to resolve

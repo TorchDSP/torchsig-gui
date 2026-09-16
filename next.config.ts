@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   // - Otherwise, uses the devault value of ".next" to hold the dev build
   distDir: process.env.NEXT_STATIC_BUILD ?? ".next",
 
+  // Uses a fixed build ID so rebuilding unchanged source reproduces the committed static build
+  generateBuildId: async () => "torchsiggui",
+
   // Makes Next Image components unoptimized to allow static building
   images: {
     unoptimized: true,

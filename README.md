@@ -9,15 +9,22 @@ TorchSigGUI is an open-source graphical interface for [TorchSig](https://torchsi
 - CPU with &ge; 4 cores
 - GPU with &ge; 16 GB of memory (recommended)
 - Python &ge; 3.10
+- [TorchSig](https://github.com/TorchDSP/torchsig) 2.2.0 (installed automatically)
 
 ## Installation
 
-Clone this repository and install it:
+Install a release directly from GitHub:
 
 ```
-git clone https://<redacted-host>/torchsig/torchsig-gui.git
+pip install git+https://github.com/TorchDSP/torchsig-gui.git@v0.0.1
+```
+
+Or clone this repository and install it:
+
+```
+git clone https://github.com/TorchDSP/torchsig-gui.git
 cd torchsig-gui
-pip install -e .
+pip install .
 ```
 
 ## Starting the Interface
@@ -36,7 +43,45 @@ To see the available server options:
 torchsiggui --help
 ```
 
-You can also configure the server with a `.env` file in the folder where you cloned the repository, matching the format of `.env.example`.
+You can also configure the server with a `.env` file in the folder where you start the server, matching the format of [`.env.example`](.env.example).
+
+Datasets and spectrogram images are stored in `~/.cache/torchsiggui` (or `$XDG_CACHE_HOME/torchsiggui`). Set the `TORCHSIGGUI_DATA_DIR` environment variable to use a different folder.
+
+### Running on the Same Computer
+
+If TorchSigGUI is installed on the computer you're using, start the server:
+
+```
+torchsiggui
+```
+
+Then open [http://localhost:8000](http://localhost:8000) in your browser. If you started the server with a different port, for example `torchsiggui --port 8080`, use that port instead.
+
+### Running on a Remote Server
+
+TorchSigGUI can run on a remote machine, such as a GPU server, while you use the interface from the browser on your own computer. The server only accepts connections from the machine it runs on, so you reach it through an SSH tunnel instead of opening it to the network.
+
+1. On the remote server, install TorchSigGUI and start the server:
+
+   ```
+   torchsiggui
+   ```
+
+   To keep the server running after you disconnect, start it inside `tmux` or `screen`.
+
+2. On your computer, open a new terminal and forward a local port to the server's port:
+
+   ```
+   ssh -N -L 8000:localhost:8000 <user>@<server>
+   ```
+
+   The format is `-L <local port>:localhost:<server port>`. `-N` keeps the connection open without starting a remote shell. Leave this terminal open while you use the interface.
+
+3. On your computer, open [http://localhost:8000](http://localhost:8000) in your browser.
+
+If port 8000 is already in use on your computer, pick another local port. For example, `ssh -N -L 9000:localhost:8000 <user>@<server>` makes the interface available at `http://localhost:9000`. If you started the server with `--port`, use that port as the server port.
+
+Datasets are generated and stored on the remote server. The **Download** button saves them through the tunnel to your computer, so download any datasets you want to keep before you stop the server.
 
 ## Using the Interface
 
@@ -49,6 +94,15 @@ After you press **Generate Dataset**, a new section appears in the bottom right 
 ## Development
 
 Development runs two servers: the Python API that wraps TorchSig, and the web interface that connects to it.
+
+### Setup
+
+Development requires Node.js &ge; 20.9 in addition to the prerequisites above. From the cloned repository, install the Python package with its development dependencies, then the interface dependencies:
+
+```
+pip install -e ".[dev]"
+npm install
+```
 
 ### Starting the TorchSig API
 
@@ -72,7 +126,7 @@ This opens a development page showing the current state of the interface. Interf
 
 ### Testing
 
-The repository uses pytest to test the API. From the `testing/` folder, run:
+The repository uses pytest to test the API. From the `tests/` folder, run:
 
 ```
 pytest

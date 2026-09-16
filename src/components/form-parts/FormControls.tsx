@@ -1,8 +1,9 @@
-import customSelectStyle from "@/components/form-parts/select-style";
+import customSelectStyle, { FormOption } from "@/components/form-parts/select-style";
 
 import Form from "react-bootstrap/Form";
 import Badge from "react-bootstrap/Badge";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
+import { OverlayInjectedProps } from "react-bootstrap/Overlay";
 import Tooltip from "react-bootstrap/Tooltip";
 
 import Select, { ActionMeta, MultiValue } from "react-select";
@@ -10,7 +11,7 @@ import Select, { ActionMeta, MultiValue } from "react-select";
 // Creates a hint badge to display a hint tooltip to the user
 function HintBadge({ hint }: { hint: string }) {
   // Create the function to render the tooltip
-  const renderTooltip = (props: any) => (
+  const renderTooltip = (props: OverlayInjectedProps) => (
     <Tooltip id="button" {...props}>
       {hint}
     </Tooltip>
@@ -103,12 +104,6 @@ export function FormCheckbox({ id, checked, onChange, label, hint }: { id: strin
   );
 }
 
-// Defines types for the form select field
-interface FormOption {
-  value: string,
-  label: string,
-}
-
 // Defines a converter function for handling onChange output
 function onChangeWrapper(onChange: CallableFunction) {
   return (value: FormOption | null, _action: ActionMeta<FormOption>): void => {
@@ -132,7 +127,7 @@ export function FormOptionSelect({ id, values, value, onChange, label, hint }: {
         options={options}
         value={valueObj}
         onChange={onChangeWrapper(onChange)}
-        styles={customSelectStyle}
+        styles={customSelectStyle<false>()}
       />
     </Form.Group>
   );
@@ -141,7 +136,7 @@ export function FormOptionSelect({ id, values, value, onChange, label, hint }: {
 // Defines a converter function for handling onChange output
 function onMultiChangeWrapper(onChange: CallableFunction) {
   return (multiValue: MultiValue<FormOption>, _action: ActionMeta<FormOption>): void => {
-    let newValues : string[] = [];
+    const newValues : string[] = [];
     multiValue.forEach(value => newValues.push(value.value));
     onChange(newValues ?? []);
   };
@@ -164,7 +159,7 @@ export function FormOptionMultiSelect({ id, values, multiValue, onChange, label,
         options={options}
         value={valuesObj}
         onChange={onMultiChangeWrapper(onChange)}
-        styles={customSelectStyle}
+        styles={customSelectStyle<true>()}
       />
     </Form.Group>
   );

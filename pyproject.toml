@@ -1,34 +1,37 @@
 [build-system]
 # Define build dependencies and backend
-requires = ["setuptools>=61", "build"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "torchsiggui"
-description = "Signal Processing Machine Learning Toolkit"
+description = "Graphical interface for building TorchSig datasets"
 authors = [
   {name = "TorchSig Team"},
 ]
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT AND Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause"
-license-files = [
-  "LICENSE.md",
-  "licenses/LICENSE*"
-]
-keywords = ["signal processing", "machine learning"]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["signal processing", "machine learning", "torchsig", "gui"]
 dynamic = ["version"]
 
 classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: FastAPI",
+  "Intended Audience :: Science/Research",
+  "Operating System :: POSIX :: Linux",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Scientific/Engineering",
 ]
 # Runtime dependencies
 dependencies = [
   # Core
-  "fastapi",
+  "fastapi>=0.141",
   "torch",
-  "torchsig",
+  "torchsig==2.2.0",
   "aiofiles",
   "aiosql",
   "aiosqlite",
@@ -41,30 +44,51 @@ dependencies = [
   "pydantic_settings",
   "PyYAML",
   "uvicorn[standard]",
-  # Testing, CI/CD
+]
+
+[project.optional-dependencies]
+# Testing, CI/CD
+dev = [
   "pytest",
   "pytest_asyncio",
   "pytest-timeout",
   "pytest-cov",
   "httpx2",
+  "ruff",
 ]
 
-# [project.urls]
-# TODO: Add these later
+[project.urls]
+Homepage = "https://github.com/TorchDSP/torchsig-gui"
+Repository = "https://github.com/TorchDSP/torchsig-gui"
+Issues = "https://github.com/TorchDSP/torchsig-gui/issues"
+TorchSig = "https://torchsig.com"
 
 [project.scripts]
 torchsiggui = "torchsiggui.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["torchsiggui*"]
 
 [tool.setuptools.package-data]
-files = ["*.sql"]
-webbuild = ["*"]
+torchsiggui = ["files/*.sql", "webbuild/**/*"]
 
 [tool.setuptools.dynamic]
 # Dynamically read version from torchsiggui.__version__
 version = {attr = "torchsiggui.__version__"}
+
+[tool.ruff]
+line-length = 120
+indent-width = 2
+target-version = "py310"
+extend-exclude = ["torchsiggui/webbuild", "node_modules"]
+
+[tool.ruff.lint]
+# Allows single-line if statements, which the codebase uses for short guards
+ignore = ["E701"]
+
+[tool.ruff.format]
+quote-style = "single"
 
 [tool.coverage.run]
 branch = true
@@ -83,5 +107,5 @@ filterwarnings = [
 markers = [
   "full: marks tests as full (run with --full option)",
 ]
-addopts = "-m 'not full' --cov=torchsig --cov-report=xml --cov-report=term-missing --junitxml=report.xml"
-testpaths = ["testing"]
+addopts = "-m 'not full' --cov=torchsiggui --cov-report=xml --cov-report=term-missing --junitxml=report.xml"
+testpaths = ["tests"]

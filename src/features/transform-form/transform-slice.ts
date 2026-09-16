@@ -67,7 +67,7 @@ const transformFormSlice = createSlice({
       reducer(state, action: PayloadAction<{ id: string, name: string, value: TypedValue }>) {
         // Create a new set of parameters to apply the updated parameter
         const { id, name, value } = action.payload;
-        let newParameters = { ...state.wipTransforms.entities[id].parameters };
+        const newParameters = { ...state.wipTransforms.entities[id].parameters };
         newParameters[name] = value;
 
         // Update the transform to use the new set of parameters

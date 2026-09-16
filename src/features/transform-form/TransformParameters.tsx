@@ -18,7 +18,7 @@ export default function TransformParameters({ id, editMode }: { id: string, edit
   const wipTransform = useAppSelector(state => selectWIPTransformById(state, id));
 
   // Create the list of transform parameters in read-only mode
-  let readModeTransformParametersList: React.ReactNode[] = [];
+  const readModeTransformParametersList: React.ReactNode[] = [];
   if (transform) {
     Object.entries(transform.parameters).forEach(([paramName, param]) => {
       readModeTransformParametersList.push(
@@ -30,7 +30,7 @@ export default function TransformParameters({ id, editMode }: { id: string, edit
   }
 
   // Create the list of transform parameters in edit mode
-  let editModeTransformParametersList: React.ReactNode[] = [];
+  const editModeTransformParametersList: React.ReactNode[] = [];
   if (!wipTransform) {
     editModeTransformParametersList.push(<p key={"nullTransform"}>No Transform Found</p>);
   }

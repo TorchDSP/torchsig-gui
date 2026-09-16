@@ -15,7 +15,7 @@ def test_lifespan():
 
     # Start running the server
     app = create_app()
-    with TestClient(app) as client:
+    with TestClient(app):
       # The dataset folder and database should exist when the server is running
       assert DATASET_FOLDER.is_dir()
       assert (DATABASE).exists()

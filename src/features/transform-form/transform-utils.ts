@@ -13,7 +13,7 @@ function generateSortUpdates(list: string[], source: number, target: number) {
   }
 
   // Create the update list
-  let sortUpdates = [];
+  const sortUpdates = [];
   for (let i = 0; i < list.length; i++) {
     // Use the current index as the default
     let newIndex = i;

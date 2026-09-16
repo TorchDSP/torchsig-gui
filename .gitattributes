@@ -1,0 +1,3 @@
+# Built interface: mark as generated so it is collapsed in diffs and excluded from language stats
+torchsiggui/webbuild/** linguist-generated=true -diff
+package-lock.json linguist-generated=true

@@ -18,7 +18,7 @@ from torchsig.utils.yaml import write_dict_to_yaml
 @lru_cache
 def torchsig_transform_map():
   # Get the high-level transforms that users should have access to
-  base_transform_map = { 'RandomApply': RandomApply, 'RandAugment': RandAugment }
+  base_transform_map = { 'RandomApply': RandomApply, 'RandAugment': RandAugment }  # noqa: F841
 
   # Get the low-level transforms that users should have access to
   # Look for classes that are strict subclasses of SignalTransform

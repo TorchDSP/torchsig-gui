@@ -1,3 +1,4 @@
+import logging
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -8,6 +9,9 @@ from torchsiggui.files.database_io import (
   queries
 )
 from torchsiggui.utils.torchsig_interface import torchsig_custom_dataset
+
+# Creates a logger for errors that happen during spectrogram creation
+logger = logging.getLogger(__name__)
 
 # Writes a dataset generator from user input
 async def _build_dataset(data_json):
@@ -59,4 +63,4 @@ async def create_sample_image(data_json) -> None:
 
   # If image creation fails, print an error to the server console
   except Exception as error:
-    print('An error occured while trying to create a new spectrogram image: ' + str(error))
+    logger.exception('An error occurred while trying to create a new spectrogram image: %s', error)

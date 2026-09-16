@@ -2,7 +2,6 @@ import aiosql
 import aiosqlite
 from contextlib import asynccontextmanager
 from nanoid import generate
-from pathlib import Path
 
 from torchsiggui.files.file_io import DATABASE, QUERY_FILE
 
@@ -46,7 +45,7 @@ async def run_query(sql_query, **kwargs):
 
       # Return the parsed results
       return result
-    except Exception as e:
+    except Exception:
       # Rollback the change and raise an exception if something goes wrong
       await db.rollback()
       raise
@@ -68,7 +67,7 @@ async def get_worker_info():
 
       # Return the parsed results
       return result
-    except Exception as e:
+    except Exception:
       # Rollback the change and raise an exception if something goes wrong
       await db.rollback()
       raise
@@ -96,7 +95,7 @@ async def get_file_info():
 
       # Return the parsed results
       return result
-    except Exception as e:
+    except Exception:
       # Rollback the change and raise an exception if something goes wrong
       await db.rollback()
       raise

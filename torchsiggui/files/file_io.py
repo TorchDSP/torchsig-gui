@@ -1,3 +1,4 @@
+from os import environ
 from pathlib import Path
 from platform import system
 from shutil import make_archive, unpack_archive
@@ -9,9 +10,10 @@ QUERY_FILE = MODULE_FOLDER / 'files' / 'database_sql.sql'
 WEBBUILD_FOLDER = MODULE_FOLDER / 'webbuild'
 
 # Creates variables to store the external folders and files
-MODULE_PARENT_FOLDER = MODULE_FOLDER.parent
-MODULE_LOCK_FILE = MODULE_PARENT_FOLDER / 'workers.lock'
-DATASET_FOLDER = MODULE_PARENT_FOLDER / 'datasets'
+# - Uses TORCHSIGGUI_DATA_DIR if set, otherwise the user cache folder, so data is never written into the install location
+DATA_FOLDER = Path(environ.get('TORCHSIGGUI_DATA_DIR') or Path(environ.get('XDG_CACHE_HOME') or Path.home() / '.cache') / 'torchsiggui')
+MODULE_LOCK_FILE = DATA_FOLDER / 'workers.lock'
+DATASET_FOLDER = DATA_FOLDER / 'datasets'
 DATABASE = DATASET_FOLDER / 'state.db'
 
 # ARCHIVE FUNCTIONS
