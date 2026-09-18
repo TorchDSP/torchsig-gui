@@ -89,10 +89,11 @@ UPDATE file_table
 
 -- name: update_file_progress(file_id)!
 -- Updates the progress for a file entry and updates the current status accordingly
+-- - Joins text with || rather than CONCAT, which older SQLite versions bundled with Python do not have
 UPDATE file_table
   SET progress = progress + 1,
     current_status = CASE
-      WHEN cancelled = 0 THEN CONCAT('(', progress + 1, '/', total, ') Generating...')
+      WHEN cancelled = 0 THEN '(' || (progress + 1) || '/' || total || ') Generating...'
       ELSE current_status
     END
   WHERE id = :file_id;
