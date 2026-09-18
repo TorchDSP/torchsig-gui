@@ -1,4 +1,4 @@
-from inspect import getmembers, isclass, signature
+from inspect import getmembers, isclass, signature, Parameter
 from re import compile
 
 # Creates a regex pattern to search for strings within single quotes
@@ -39,7 +39,7 @@ def get_class_parameters(input_class):
     if 'None' in param_type: continue
 
     # Get the default parameter value
-    param_value = param.default if param.default is not param.empty else ''
+    param_value = param.default if param.default not in [Parameter.empty, None] else ''
 
     # Add the next parameter to the class parameter list
     class_parameters[name] = { 'type': param_type, 'value': param_value }
