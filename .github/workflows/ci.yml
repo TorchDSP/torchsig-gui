@@ -19,16 +19,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-24.04, windows-latest, macos-latest]
         python-version: ["3.10", "3.12"]
     # Runs every step in bash, including on Windows, so the commands are the same on each platform
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -53,13 +53,14 @@ jobs:
 
   interface:
     name: Interface
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      # Uses the same Node.js version as local builds, so the committed build is reproduced as closely as possible
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -72,5 +73,6 @@ jobs:
         run: make build-web
 
       # The server ships the committed build, so it must match the source
+      # - Chunk hashes differ between platforms, so the check compares the builds with those hashes normalized
       - name: Check committed build is up to date
-        run: make check-webbuild
+        run: make check-webbuild PYTHON=python3

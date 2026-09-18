@@ -54,7 +54,7 @@ Run the same checks as CI before opening a pull request:
 make check
 ```
 
-This lints the Python code (`ruff check .`), lints and type checks the interface (`npm run lint`, `npx tsc --noEmit`), runs the API tests (`pytest`), rebuilds the interface, and fails if `torchsiggui/webbuild/` differs from the committed build.
+This lints the Python code (`ruff check .`), lints and type checks the interface (`npm run lint`, `npx tsc --noEmit`), runs the API tests (`pytest`), rebuilds the interface, and fails if `torchsiggui/webbuild/` differs from the committed build. Chunk file names are content hashes that change between platforms, so that check ignores them and the order of the inline scripts; everything else must match. Build with the Node.js version in `.nvmrc`, which CI also uses.
 
 Run `make help` to list the other tasks.
 

@@ -84,6 +84,8 @@ target-version = "py310"
 extend-exclude = ["torchsiggui/webbuild", "node_modules"]
 
 [tool.ruff.lint]
+# Lists the rules explicitly, so newer ruff releases that change the default rules do not change what is checked
+select = ["E4", "E7", "E9", "F"]
 # Allows single-line if statements, which the codebase uses for short guards
 ignore = ["E701"]
 

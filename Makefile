@@ -41,12 +41,8 @@ lint-web: ## Lint and type check the interface
 
 check: lint test build-web check-webbuild ## Run the same checks as CI
 
-check-webbuild: ## Fail if torchsiggui/webbuild differs from the committed build
-	@if [ -n "$$(git status --porcelain torchsiggui/webbuild)" ]; then \
-		git status --porcelain torchsiggui/webbuild; \
-		echo "torchsiggui/webbuild is out of date. Run 'make build-web' and commit the result."; \
-		exit 1; \
-	fi
+check-webbuild: ## Fail if torchsiggui/webbuild differs from the committed build, ignoring chunk hashes
+	$(PYTHON) scripts/check_webbuild.py
 
 package: build-web ## Build the wheel and sdist into dist/
 	$(PYTHON) -m pip install --upgrade build
