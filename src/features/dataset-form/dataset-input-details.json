@@ -7,13 +7,17 @@
     "label": "Dataset Length",
     "hint": "The amount of signals contained in the dataset."
   },
+  "location": {
+    "label": "Save Location",
+    "hint": "The folder the dataset is written into, on the machine running the server. Use a full path; ~ is the home folder of the account running the server."
+  },
   "filename": {
-    "label": "File Name",
-    "hint": "The file name that the dataset will be saved as."
+    "label": "Dataset Name",
+    "hint": "The name of the dataset folder created inside the save location."
   },
   "overwrite": {
     "label": "Overwrite",
-    "hint": "Whether to overwrite an existing dataset."
+    "hint": "Whether to replace an existing TorchSig dataset with the same name in the save location. Folders that are not TorchSig datasets are never replaced."
   },
   "multithreading": {
     "label": "Multithreading",

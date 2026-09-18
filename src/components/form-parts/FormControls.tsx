@@ -76,12 +76,13 @@ export function FormInput({ id, value, isInt, onChange, label, hint }: { id: str
 }
 
 // Creates a form file input field to display to the user
-export function FormFileInput({ id, onChange, label, hint }: { id: string, onChange: CallableFunction, label?: string, hint?: string }) {
-  // Return the form file input with a label, hint badge, and placeholder, if they exist
+export function FormFileInput({ id, value, onChange, label, hint }: { id: string, value?: string, onChange: CallableFunction, label?: string, hint?: string }) {
+  // Return the form file input with a label, hint badge, placeholder, and starting value, if they exist
   return (
     <Form.Group className="mb-3" controlId={id}>
       {label && <Form.Label><FormFieldLabel label={label} hint={hint} /></Form.Label>}
       <Form.Control
+        defaultValue={value}
         placeholder={"Enter " + label + "..."}
         onChange={(e) => onChange(e)}
       />

@@ -1,3 +1,4 @@
+from torchsiggui.files.file_io import SERVER_HOSTNAME, get_default_dataset_location
 from torchsiggui.utils.inspection import get_class_parameters
 from torchsiggui.utils.torchsig_interface import (
   torchsig_transform_map,
@@ -51,10 +52,14 @@ def lookup_dataset_defaults():
   # Create a dummy dataset creator
   default_creator = torchsig_dummy_creator()
 
-  # Get the dataset defaults from the dummy dataset creator
+  # Get the dataset defaults
+  # - Overwrite is off by default, since datasets are kept in the save location and overwriting replaces one
+  # - The hostname tells the user which machine the save location is on
   dataset_defaults = {
-    'overwrite': default_creator.overwrite,
-    'multithreading': default_creator.multithreading
+    'overwrite': False,
+    'multithreading': default_creator.multithreading,
+    'location': str(get_default_dataset_location()),
+    'hostname': SERVER_HOSTNAME
   }
 
   # Return the TorchSig dataset defaults

@@ -1,5 +1,5 @@
 from torchsiggui.app import router
-from torchsiggui.files.file_io import DATASET_FOLDER, WEBBUILD_FOLDER
+from torchsiggui.files.file_io import SESSION_FOLDER, WEBBUILD_FOLDER
 from torchsiggui.files.database_io import (
   run_query,
   queries,
@@ -85,8 +85,8 @@ async def remove_crashed_workers():
 @asynccontextmanager
 async def startup_shutdown(app: FastAPI):
   # STARTUP TASKS
-  # Create the dataset folder and database if they do not exist
-  makedirs(DATASET_FOLDER, exist_ok=True)
+  # Create the session folder and database if they do not exist
+  makedirs(SESSION_FOLDER, exist_ok=True)
   await run_query(queries.create_database)
 
   # Remove any records of crashed workers
@@ -98,7 +98,7 @@ async def startup_shutdown(app: FastAPI):
   await run_query(queries.add_worker_entry, process_id=pid, created_date=created)
 
   # Mount the images file for this worker so it can host images
-  app.mount('/images', StaticFiles(directory=DATASET_FOLDER), name='static')
+  app.mount('/images', StaticFiles(directory=SESSION_FOLDER), name='static')
 
   # Yield until shutdown
   yield
@@ -111,11 +111,12 @@ async def startup_shutdown(app: FastAPI):
   pid = getpid()
   await run_query(queries.delete_worker_entry, process_id=pid)
 
-  # If this is the last worker to shut down, also delete the database and dataset folder
+  # If this is the last worker to shut down, also delete the database and spectrogram images
+  # - Datasets are written to the save location the user chose, so they are kept
   # - Ignores files that cannot be deleted, such as files another program still has open on Windows, so shutdown still completes
   active_workers = await run_query(queries.get_worker_count)
   if active_workers == 0:
-    rmtree(DATASET_FOLDER, ignore_errors=True)
+    rmtree(SESSION_FOLDER, ignore_errors=True)
 
 # Creates a configured server application instance
 def create_app():

@@ -57,7 +57,7 @@ DELETE FROM worker_table WHERE pid = :process_id;
 
 -- name: get_file_info()
 -- Queries the file info stored in the file table
-SELECT id, current_status, progress, total, filepath, ready FROM file_table;
+SELECT id, current_status, progress, total, filepath, complete, ready FROM file_table;
 
 -- name: get_is_cancelled(file_id)$
 -- Queries whether the write for a file is cancelled
@@ -93,7 +93,7 @@ UPDATE file_table
   WHERE id = :file_id;
 
 -- name: complete_file(file_id, complete_status)!
--- Marks a file entry as complete and, unless cancelled, ready to download
+-- Marks a file entry as complete and, unless cancelled, ready to use
 UPDATE file_table
   SET complete = 1,
     ready = CASE
@@ -107,7 +107,7 @@ UPDATE file_table
   WHERE id = :file_id;
 
 -- name: fail_file(file_id, error_status)!
--- Marks a file entry as complete without making it ready to download
+-- Marks a file entry as complete without making it ready to use
 UPDATE file_table
   SET complete = 1,
     current_status = CASE

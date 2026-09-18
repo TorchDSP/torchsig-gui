@@ -7,9 +7,10 @@ import { RootState } from "@/store/store";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 // Sets the initial state of the state slice
-const initialDatasetDetails : DatasetDetails = { overwrite: true, multithreading: true }
+const initialDatasetDetails : DatasetDetails = { overwrite: false, multithreading: true }
 const initialDataset = {
   dataset: initialDatasetDetails,
+  hostname: "",
   datasetLabels: datasetJSON as RecordMap<InputDetail>
 };
 
@@ -38,6 +39,11 @@ const datasetFormSlice = createSlice({
     setDatasetFormFilenameEntry(state, action: PayloadAction<string>) {
       state.dataset.root = action.payload;
     },
+    // Sets the dataset save location, a folder on the machine running the server
+    // [setDatasetFormLocationEntry(location)]
+    setDatasetFormLocationEntry(state, action: PayloadAction<string>) {
+      state.dataset.location = action.payload;
+    },
     // Sets the dataset overwrite setting
     // [setDatasetFormOverwriteEntry(overwrite)]
     setDatasetFormOverwriteEntry(state, action: PayloadAction<boolean>) {
@@ -55,7 +61,9 @@ const datasetFormSlice = createSlice({
     builder.addMatcher(
       apiSlice.endpoints.getDatasetDefaults.matchFulfilled,
       (state, action) => {
-        state.dataset = action.payload;
+        const { hostname, ...datasetDefaults } = action.payload;
+        state.dataset = datasetDefaults;
+        state.hostname = hostname;
         return state;
       }
     );
@@ -69,6 +77,8 @@ export const selectAllDatasetFormEntries = (state: RootState) => state.datasetFo
 export const selectDatasetFormSeedEntry = (state:RootState) => state.datasetForm.dataset.seed;
 export const selectDatasetFormLengthEntry = (state:RootState) => state.datasetForm.dataset.length;
 export const selectDatasetFormRootEntry = (state:RootState) => state.datasetForm.dataset.root;
+export const selectDatasetFormLocationEntry = (state:RootState) => state.datasetForm.dataset.location;
+export const selectDatasetServerHostname = (state:RootState) => state.datasetForm.hostname;
 export const selectDatasetFormOverwriteEntry = (state:RootState) => state.datasetForm.dataset.overwrite;
 export const selectDatasetFormMultithreadingEntry = (state:RootState) => state.datasetForm.dataset.multithreading;
 
@@ -77,6 +87,7 @@ export const {
   setDatasetFormSeedEntry,
   setDatasetFormLengthEntry,
   setDatasetFormFilenameEntry,
+  setDatasetFormLocationEntry,
   setDatasetFormOverwriteEntry,
   setDatasetFormMultithreadingEntry
 } = datasetFormSlice.actions;

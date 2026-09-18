@@ -1,8 +1,8 @@
 import torchsiggui.app_lookup as app_lookup
-from torchsiggui.app_write_dataset import create_dataset_file, track_new_file
+from torchsiggui.app_write_dataset import create_dataset_file, track_new_file, read_dataset_complete
 from torchsiggui.app_write_spectrogram import create_sample_image
 
-from torchsiggui.files.file_io import DATASET_FOLDER
+from torchsiggui.files.file_io import SESSION_FOLDER
 from torchsiggui.files.database_io import (
   run_query,
   queries,
@@ -10,13 +10,11 @@ from torchsiggui.files.database_io import (
   DuplicateFileError
 )
 
-import aiofiles
 import logging
 
 from asyncio import sleep, create_task, to_thread
 from pathlib import Path
 from shutil import rmtree
-from typing import AsyncGenerator
 
 from fastapi import (
   APIRouter,
@@ -25,7 +23,6 @@ from fastapi import (
   WebSocketDisconnect,
   HTTPException
 )
-from fastapi.responses import StreamingResponse
 
 # Creates a router to store the server routes
 router = APIRouter()
@@ -34,8 +31,8 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # Deletes a file, logging instead of failing if it cannot be removed
-# - Windows cannot delete a file while it is open, such as an image or archive that is still being sent to a browser
-# - Any file left behind is removed with the dataset folder when the server shuts down
+# - Windows cannot delete a file while it is open, such as an image that is still being sent to a browser
+# - Any file left behind is removed with the session folder when the server shuts down
 def remove_file(file_path: Path) -> None:
   try:
     file_path.unlink(missing_ok=True)
@@ -80,12 +77,11 @@ def post_write_sample(data_json: dict, background_tasks: BackgroundTasks):
 
 @router.post('/api/write-dataset')
 async def post_write_dataset(data_json: dict, background_tasks: BackgroundTasks):
-  # Start tracking the new dataset file before responding, so name problems are reported to the user
+  # Start tracking the new dataset before responding, so name and save location problems are reported to the user
   try:
     file_id = await track_new_file(data_json)
-  except DuplicateFileError:
-    name = data_json['dataset']['root']
-    raise HTTPException(status_code=409, detail=f"A dataset named '{name}' already exists. Choose a different name.")
+  except DuplicateFileError as error:
+    raise HTTPException(status_code=409, detail=str(error))
   except KeyError as error:
     raise HTTPException(status_code=400, detail=f'Missing dataset field: {error}')
   except (TypeError, ValueError) as error:
@@ -97,43 +93,8 @@ async def post_write_dataset(data_json: dict, background_tasks: BackgroundTasks)
   # Return a success message
   return { 'message': 'success' }
 
-# FASTAPI DOWNLOAD HANDLERS
-# Connects download requests from the client to API functions and handles API-stored dataset files
-
-async def async_file_iterator(file_path: Path, chunk_size: int = 1024 * 64) -> AsyncGenerator[bytes, None]:
-  async with aiofiles.open(file_path, 'rb') as file:
-    while chunk := await file.read(chunk_size):
-      yield chunk
-
-@router.get('/api/download-dataset/{file_id}')
-async def get_download_dataset(file_id: str):
-  # Get the file_info map and check for the file
-  file_info = await get_file_info()
-
-  # Raise an exception if the file does not exist
-  if file_id not in file_info:
-    raise HTTPException(status_code=404, detail='File not found')
-
-  # Raise an exception if the dataset is still being written, has failed, or was cancelled
-  if not file_info[file_id]['ready']:
-    raise HTTPException(status_code=409, detail='Dataset is not ready to download')
-
-  # Get the file path from the file id
-  file_name = file_info[file_id]['filepath']
-  file_path = DATASET_FOLDER / file_name
-
-  # Raise an exception if the archive file is missing
-  if not file_path.is_file():
-    raise HTTPException(status_code=404, detail='File not found')
-
-  # Return a stream for downloading the file
-  return StreamingResponse(
-    content=async_file_iterator(file_path),
-    media_type='application/octet-stream',
-    headers={
-      'Content-Disposition': f'attachment; filename="{file_name}"'
-    }
-  )
+# FASTAPI DATASET HANDLERS
+# Connects dataset list requests from the client to API functions
 
 @router.delete('/api/cancel-dataset/{file_id}')
 async def delete_cancel_dataset(file_id: str):
@@ -144,13 +105,13 @@ async def delete_cancel_dataset(file_id: str):
   if file_id not in file_info:
     raise HTTPException(status_code=404, detail='File not found')
 
-  # Mark the file as cancelled
-  await run_query(queries.cancel_file, file_id=file_id)
+  # If the dataset finished writing, only remove it from the list, keeping its files where the user saved them
+  if file_info[file_id]['ready']:
+    await run_query(queries.delete_file_entry, file_id=file_id)
+    return { 'message': 'success' }
 
-  # Get the parent folder path from the file id
-  file_name = file_info[file_id]['filepath']
-  folder_path = DATASET_FOLDER / file_id
-  archive_path = DATASET_FOLDER / file_name
+  # Otherwise, mark the dataset as cancelled
+  await run_query(queries.cancel_file, file_id=file_id)
 
   # Wait for the background task to complete
   while True:
@@ -164,11 +125,15 @@ async def delete_cancel_dataset(file_id: str):
     # Return control to the FastAPI event loop so the background task can finish
     await sleep(0.1)
 
-  # Delete the cancelled file, in a worker thread since large datasets can take a while to remove
+  # Remove the dataset from the list
   await run_query(queries.delete_file_entry, file_id=file_id)
-  if folder_path.exists():
+
+  # Delete the partial dataset folder, in a worker thread since large datasets can take a while to remove
+  # - Keeps the folder if it still holds a finished dataset, such as one that was going to be overwritten
+  #   but was not replaced because the new dataset failed or was cancelled before writing started
+  folder_path = Path(file_info[file_id]['filepath'])
+  if folder_path.is_dir() and not folder_path.is_symlink() and not read_dataset_complete(folder_path):
     await to_thread(rmtree, folder_path, ignore_errors=True)
-  remove_file(archive_path)
 
   # Return a success message
   return { 'message': 'success' }
@@ -193,7 +158,7 @@ async def websocket_endpoint(websocket: WebSocket):
       if this_image != last_image and this_image['current_name'] and this_image['complete']:
         await websocket.send_json({ 'type': 'spectrogram', 'update': this_image['current_name'] })
         if 'current_name' in last_image:
-          remove_file(DATASET_FOLDER / last_image['current_name'])
+          remove_file(SESSION_FOLDER / last_image['current_name'])
         last_image = this_image
 
       # Return control to the FastAPI event loop to process other requests between checks

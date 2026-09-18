@@ -1,8 +1,8 @@
 import sys
 
-from os import environ, walk
+from os import environ
 from pathlib import Path
-from zipfile import ZipFile, ZIP_STORED
+from socket import gethostname
 
 # DIRECTORY LOCATIONS
 # Creates variables to store the main application folders
@@ -21,27 +21,19 @@ def get_cache_folder() -> Path:
     return Path.home() / 'Library' / 'Caches'
   return Path(environ.get('XDG_CACHE_HOME') or Path.home() / '.cache')
 
-# Creates variables to store the external folders and files
+# Creates variables to store the server's working folder and files
+# - Holds the server database and spectrogram images, and is removed when the server shuts down
 # - Uses TORCHSIGGUI_DATA_DIR if set, otherwise the user cache folder, so data is never written into the install location
 DATA_FOLDER = Path(environ.get('TORCHSIGGUI_DATA_DIR') or get_cache_folder() / 'torchsiggui')
-DATASET_FOLDER = DATA_FOLDER / 'datasets'
-DATABASE = DATASET_FOLDER / 'state.db'
+SESSION_FOLDER = DATA_FOLDER / 'session'
+DATABASE = SESSION_FOLDER / 'state.db'
 
-# ARCHIVE FUNCTIONS
-# Datasets are always downloaded as zip files, since every operating system can open them without extra tools
-ARCHIVE_EXTENSION = 'zip'
+# DATASET LOCATIONS
+# Names the machine the server runs on, so users know where their datasets are written
+SERVER_HOSTNAME = gethostname()
 
-# Creates an archive file in the dataset folder containing everything inside a folder
-# - Stores files without compression, since dataset files barely compress and compressing large datasets is slow
-def create_archive_file(filename: str, to_zip: Path):
-  with ZipFile(DATASET_FOLDER / (filename + '.' + ARCHIVE_EXTENSION), 'w', ZIP_STORED) as archive:
-    for folder, folder_names, file_names in walk(to_zip):
-      folder_names.sort()
-      for name in folder_names + sorted(file_names):
-        path = Path(folder) / name
-        archive.write(path, path.relative_to(to_zip))
-
-# Extracts archive files
-def extract_archive_file(filename: Path, dest: Path):
-  with ZipFile(filename) as archive:
-    archive.extractall(dest)
+# Returns the default folder that datasets are written into
+# - Uses TORCHSIGGUI_DATASET_LOCATION if set, otherwise ~/torchsig_datasets
+# - Datasets are kept after the server shuts down
+def get_default_dataset_location() -> Path:
+  return Path(environ.get('TORCHSIGGUI_DATASET_LOCATION') or Path.home() / 'torchsig_datasets').expanduser()

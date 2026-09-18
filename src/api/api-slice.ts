@@ -1,6 +1,6 @@
 import { RecordMap, TypedValue } from "@/types/shared-types";
-import { DatasetDetails } from "@/types/dataset-types";
-import { AsyncInfo } from "@/types/download-types";
+import { DatasetDefaults } from "@/types/dataset-types";
+import { AsyncInfo } from "@/types/dataset-list-types";
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"
 
@@ -36,7 +36,7 @@ export const apiSlice = createApi({
     getTransformOptions: builder.query<RecordMap<RecordMap<TypedValue>>, void>({
       query: () => "/transform-options"
     }),
-    getDatasetDefaults: builder.query<DatasetDetails, void>({
+    getDatasetDefaults: builder.query<DatasetDefaults, void>({
       query: () => "/dataset-defaults"
     }),
     postWriteSample: builder.mutation<unknown, unknown>({
@@ -59,9 +59,9 @@ export const apiSlice = createApi({
         method: "DELETE"
       })
     }),
-    getDownloads: builder.query<AsyncInfo, void>({
+    getLiveUpdates: builder.query<AsyncInfo, void>({
       // Return an empty map initially
-      queryFn: async () => ({ data: { "sampleFilename": "", "downloadMap": {} } }),
+      queryFn: async () => ({ data: { "sampleFilename": "", "datasetMap": {} } }),
 
       // Update the cache entry keep time to close the socket sooner
       keepUnusedDataFor: 3,
@@ -85,7 +85,7 @@ export const apiSlice = createApi({
                     draft.sampleFilename = asyncData.update;
                     break;
                   case "file":
-                    draft.downloadMap = asyncData.update;
+                    draft.datasetMap = asyncData.update;
                     break;
                   default:
                     break;
@@ -120,13 +120,10 @@ export const {
   usePostWriteSampleMutation,
   usePostWriteDatasetMutation,
   usePostCancelDatasetMutation,
-  useGetDownloadsQuery
+  useGetLiveUpdatesQuery
 } = apiSlice;
 
 // Exports utility functions for building URLs
 export function buildImageLink(filename: string) {
   return baseUrl + "/images/" + filename;
-}
-export function buildDownloadLink(id: string) {
-  return baseUrl + "/api/download-dataset/" + id;
 }

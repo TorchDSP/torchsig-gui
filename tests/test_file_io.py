@@ -1,17 +1,10 @@
 # FILE I/O TESTS
-# Tests the data folder location and the dataset archive files
+# Tests the data folder and default dataset save locations
 
 from pathlib import Path
 from unittest.mock import patch
-from zipfile import ZipFile, ZIP_STORED
 
-from torchsiggui.files.file_io import (
-  ARCHIVE_EXTENSION,
-  DATASET_FOLDER,
-  get_cache_folder,
-  create_archive_file,
-  extract_archive_file
-)
+from torchsiggui.files.file_io import get_cache_folder, get_default_dataset_location
 
 def test_get_cache_folder_windows(monkeypatch):
   # Windows should use the local app data folder
@@ -32,21 +25,11 @@ def test_get_cache_folder_linux(monkeypatch):
     monkeypatch.delenv('XDG_CACHE_HOME')
     assert get_cache_folder() == Path.home() / '.cache'
 
-def test_create_and_extract_archive_file(affixed_client, tmp_path):
-  # Create a folder with a dataset folder and files inside it
-  source = tmp_path / 'source'
-  (source / 'dataset' / 'data').mkdir(parents=True)
-  (source / 'dataset' / 'info.yaml').write_text('info')
-  (source / 'dataset' / 'data' / 'samples.h5').write_bytes(b'samples')
+def test_get_default_dataset_location(monkeypatch):
+  # The default save location should be ~/torchsig_datasets
+  monkeypatch.delenv('TORCHSIGGUI_DATASET_LOCATION')
+  assert get_default_dataset_location() == Path.home() / 'torchsig_datasets'
 
-  # The archive should be an uncompressed zip file with the dataset folder at its top level
-  create_archive_file('dataset', source)
-  archive_path = DATASET_FOLDER / ('dataset.' + ARCHIVE_EXTENSION)
-  with ZipFile(archive_path) as archive:
-    assert sorted(archive.namelist()) == ['dataset/', 'dataset/data/', 'dataset/data/samples.h5', 'dataset/info.yaml']
-    assert all(info.compress_type == ZIP_STORED for info in archive.infolist())
-
-  # Extracting the archive should restore the same files
-  extract_archive_file(archive_path, tmp_path / 'extracted')
-  assert (tmp_path / 'extracted' / 'dataset' / 'info.yaml').read_text() == 'info'
-  assert (tmp_path / 'extracted' / 'dataset' / 'data' / 'samples.h5').read_bytes() == b'samples'
+  # TORCHSIGGUI_DATASET_LOCATION should override it
+  monkeypatch.setenv('TORCHSIGGUI_DATASET_LOCATION', '/test/datasets')
+  assert get_default_dataset_location() == Path('/test/datasets')

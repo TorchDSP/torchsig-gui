@@ -1,15 +1,15 @@
 # WRITE DATASET PROCEDURE TESTS
-# Tests everything that goes into writing a dataset file, its associated YAML files, and the archive file containing them all
+# Tests everything that goes into writing a dataset folder, its dataset files, and its YAML files
 
 import json
 import pytest
 import time
 from unittest.mock import patch
 
-from conftest import TEST_DATA, measure_event_loop_gap
+from conftest import TEST_DATA, measure_event_loop_gap, generate_test_dataset_file
 
 from torchsiggui.app_write_dataset import create_dataset_file
-from torchsiggui.files.file_io import ARCHIVE_EXTENSION, DATASET_FOLDER
+from torchsiggui.files.file_io import SERVER_HOSTNAME
 from torchsiggui.files.database_io import (
   run_query,
   queries,
@@ -35,12 +35,12 @@ def test_post_write_dataset_response_success(mock_bg_task, affixed_client):
 async def test_post_write_dataset_websocket_success(affixed_client, subtests):
   # Define the input data for the websocket trigger functions
   test_file_id = 'test_id'
-  test_file_name = 'test_file' + '.' + ARCHIVE_EXTENSION
+  test_file_name = '/datasets/test_file'
   test_len = 10
 
   # Define the output data expected from the websocket
   def json_output(progress: int):
-    return { 'type': 'file', 'update': { test_file_id: { 'current_status': '(' + str(progress) + '/' + str(test_len) + ') Generating...', 'progress': progress, 'total': test_len, 'filepath': test_file_name, 'ready': False } } }
+    return { 'type': 'file', 'update': { test_file_id: { 'current_status': '(' + str(progress) + '/' + str(test_len) + ') Generating...', 'progress': progress, 'total': test_len, 'filepath': test_file_name, 'complete': False, 'ready': False } } }
 
   # Connect to the websocket and simulate the triggers
   with affixed_client.websocket_connect('ws://localhost/ws') as websocket:
@@ -49,7 +49,7 @@ async def test_post_write_dataset_websocket_success(affixed_client, subtests):
 
     # The received data should contain a file update with the new file status
     data = websocket.receive_json()
-    assert data == { 'type': 'file', 'update': { test_file_id: { 'current_status': '', 'progress': 0, 'total': test_len, 'filepath': test_file_name, 'ready': False } } }
+    assert data == { 'type': 'file', 'update': { test_file_id: { 'current_status': '', 'progress': 0, 'total': test_len, 'filepath': test_file_name, 'complete': False, 'ready': False } } }
 
     # Trigger a sample file status update
     test_status = 'Test Status'
@@ -57,7 +57,7 @@ async def test_post_write_dataset_websocket_success(affixed_client, subtests):
 
     # The received data should contain a file update with the updated file status
     data = websocket.receive_json()
-    assert data == { 'type': 'file', 'update': { test_file_id: { 'current_status': test_status, 'progress': 0, 'total': test_len, 'filepath': test_file_name, 'ready': False } } }
+    assert data == { 'type': 'file', 'update': { test_file_id: { 'current_status': test_status, 'progress': 0, 'total': test_len, 'filepath': test_file_name, 'complete': False, 'ready': False } } }
 
     # Trigger the file progress updates
     for progress in range(1, test_len + 1):
@@ -74,31 +74,134 @@ async def test_post_write_dataset_websocket_success(affixed_client, subtests):
 
     # The received data should contain a file update with the completed file status
     data = websocket.receive_json()
-    assert data == { 'type': 'file', 'update': { test_file_id: { 'current_status': 'Complete', 'progress': test_len, 'total': test_len, 'filepath': test_file_name, 'ready': True } } }
+    assert data == { 'type': 'file', 'update': { test_file_id: { 'current_status': 'Complete', 'progress': test_len, 'total': test_len, 'filepath': test_file_name, 'complete': True, 'ready': True } } }
 
 @pytest.mark.asyncio
-async def test_post_write_dataset_function(affixed_client):
-  # A dataset file should not be present before the function runs
+async def test_post_write_dataset_function(affixed_client, affixed_dataset_location):
+  # A dataset should not be present before the function runs
   file_info = await get_file_info()
   assert len(file_info) == 0
-
-  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + ARCHIVE_EXTENSION]
-  assert not datasets
+  assert not affixed_dataset_location.exists()
 
   # Get the JSON payload
   with open(TEST_DATA / 'data_default.json') as test_json_file:
     payload = json.load(test_json_file)
 
-  # Create the dataset file
-  assert DATASET_FOLDER.exists()
+  # Create the dataset
   await create_dataset_file(payload)
 
-  # A dataset file should be created
+  # The dataset should be written directly to <location>/<name>, with no archive, and marked ready
   file_info = await get_file_info()
-  assert len(file_info) > 0
+  assert len(file_info) == 1
+  test_file = next(iter(file_info.values()))
+  dataset_folder = affixed_dataset_location.resolve() / payload['dataset']['root'].name
+  assert test_file['filepath'] == str(dataset_folder)
+  assert test_file['ready'] is True
+  assert sorted(file.name for file in dataset_folder.iterdir()) == ['data.h5', 'dataset_info.yaml', 'writer_info.yaml']
+  assert sorted(file.name for file in affixed_dataset_location.iterdir()) == [dataset_folder.name]
 
-  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + ARCHIVE_EXTENSION]
-  assert datasets
+@pytest.mark.asyncio
+async def test_post_write_dataset_chosen_location(affixed_client, tmp_path):
+  # Get the JSON payload and choose a save location
+  with open(TEST_DATA / 'data_default.json') as test_json_file:
+    payload = json.load(test_json_file)
+  location = tmp_path / 'chosen'
+  location.mkdir()
+  payload['dataset']['location'] = str(location)
+
+  # The dataset should be written inside the chosen location
+  await create_dataset_file(payload)
+  assert (location.resolve() / 'test_tmp' / 'data.h5').is_file()
+
+@patch('torchsiggui.app.create_dataset_file')
+def test_post_write_dataset_home_location(mock_bg_task, affixed_client, tmp_path, monkeypatch):
+  # A location starting with ~ should be expanded to the home folder of the account running the server
+  monkeypatch.setenv('HOME', str(tmp_path))
+  monkeypatch.setenv('USERPROFILE', str(tmp_path))
+  (tmp_path / 'data').mkdir()
+  with open(TEST_DATA / 'data_default.json') as test_json_file:
+    payload = json.load(test_json_file)
+  payload['dataset']['location'] = '~/data'
+
+  response = affixed_client.post('/api/write-dataset', json=payload)
+  assert response.status_code == 200
+  mock_bg_task.assert_called_once()
+  assert mock_bg_task.call_args.args[0]['dataset']['root'] == (tmp_path / 'data').resolve() / 'test_tmp'
+
+@pytest.mark.parametrize('location, message', [
+  ('relative/folder', 'must be a full path'),
+  ('   ', 'Enter a save location'),
+  ('MISSING', 'is not a folder'),
+  ('FILE', 'is not a folder'),
+])
+@patch('torchsiggui.app.create_dataset_file')
+def test_post_write_dataset_invalid_location(mock_bg_task, affixed_client, tmp_path, location, message):
+  # Replace the placeholders with a missing folder and a file
+  (tmp_path / 'file.txt').write_text('')
+  location = { 'MISSING': str(tmp_path / 'missing'), 'FILE': str(tmp_path / 'file.txt') }.get(location, location)
+
+  # Get the JSON payload and set the save location
+  with open(TEST_DATA / 'data_default.json') as test_json_file:
+    payload = json.load(test_json_file)
+  payload['dataset']['location'] = location
+
+  # The request should be rejected with a message that names the server, and nothing should be created
+  response = affixed_client.post('/api/write-dataset', json=payload)
+  assert response.status_code == 400
+  assert message in response.json()['detail']
+  assert SERVER_HOSTNAME in response.json()['detail']
+  assert not (tmp_path / 'missing').exists()
+  mock_bg_task.assert_not_called()
+
+@patch('torchsiggui.app.create_dataset_file')
+def test_post_write_dataset_existing_folder_without_overwrite(mock_bg_task, affixed_client, affixed_dataset_location):
+  # Create a folder with the same name as the dataset
+  existing = affixed_dataset_location / 'test_tmp'
+  existing.mkdir(parents=True)
+  (existing / 'keep.txt').write_text('keep')
+
+  # With overwrite off, the request should be rejected and the folder left alone
+  with open(TEST_DATA / 'data_default.json') as test_json_file:
+    payload = json.load(test_json_file)
+  payload['dataset']['overwrite'] = False
+  response = affixed_client.post('/api/write-dataset', json=payload)
+  assert response.status_code == 409
+  assert 'already exists' in response.json()['detail']
+  assert (existing / 'keep.txt').read_text() == 'keep'
+  mock_bg_task.assert_not_called()
+
+@patch('torchsiggui.app.create_dataset_file')
+def test_post_write_dataset_existing_folder_not_dataset(mock_bg_task, affixed_client, affixed_dataset_location):
+  # Create a folder with the same name as the dataset that is not a TorchSig dataset
+  existing = affixed_dataset_location / 'test_tmp'
+  existing.mkdir(parents=True)
+  (existing / 'keep.txt').write_text('keep')
+
+  # Even with overwrite on, the request should be rejected, since TorchSig would delete the folder
+  with open(TEST_DATA / 'data_default.json') as test_json_file:
+    payload = json.load(test_json_file)
+  payload['dataset']['overwrite'] = True
+  response = affixed_client.post('/api/write-dataset', json=payload)
+  assert response.status_code == 400
+  assert 'not a TorchSig dataset' in response.json()['detail']
+  assert (existing / 'keep.txt').read_text() == 'keep'
+  mock_bg_task.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_post_write_dataset_overwrite_existing_dataset(affixed_client, affixed_dataset_location):
+  # Write a dataset, then remove it from the list, keeping its files
+  test_file_id = await generate_test_dataset_file(TEST_DATA / 'data_default.json')
+  await run_query(queries.delete_file_entry, file_id=test_file_id)
+
+  # With overwrite on, a dataset with the same name should replace it
+  with open(TEST_DATA / 'data_default.json') as test_json_file:
+    payload = json.load(test_json_file)
+  payload['dataset']['overwrite'] = True
+  await create_dataset_file(payload)
+
+  file_info = await get_file_info()
+  assert [file['ready'] for file in file_info.values()] == [True]
+  assert (affixed_dataset_location.resolve() / 'test_tmp' / 'data.h5').is_file()
 @patch('torchsiggui.app.create_dataset_file')
 def test_post_write_dataset_duplicate_name(mock_bg_task, affixed_client):
   # Get the JSON payload
@@ -176,7 +279,7 @@ async def test_post_write_dataset_function_failure(affixed_client):
   with patch('torchsiggui.app_write_dataset.torchsig_custom_dataset', side_effect=RuntimeError('Test Failure')):
     await create_dataset_file(payload)
 
-  # The file should be marked complete, with the error as its status, and not ready to download
+  # The file should be marked complete, with the error as its status, and not ready to use
   file_info = await get_file_info()
   assert len(file_info) == 1
   test_file_id, test_file = next(iter(file_info.items()))

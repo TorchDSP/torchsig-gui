@@ -59,6 +59,14 @@ async def measure_event_loop_gap(coroutine):
   await task
   return max_gap
 
+# DATASET LOCATION FIXTURES
+# Writes each test's datasets to its own temporary save location, so tests never write to ~/torchsig_datasets
+@pytest.fixture(autouse=True)
+def affixed_dataset_location(tmp_path, monkeypatch):
+  location = tmp_path / 'torchsig_datasets'
+  monkeypatch.setenv('TORCHSIGGUI_DATASET_LOCATION', str(location))
+  yield location
+
 # CLIENT FIXTURES
 # Affixes a test client object for creating API calls
 @pytest.fixture

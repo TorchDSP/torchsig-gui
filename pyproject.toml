@@ -34,7 +34,6 @@ dependencies = [
   "fastapi>=0.141",
   "torch",
   "torchsig==2.2.0",
-  "aiofiles",
   "aiosql",
   "aiosqlite",
   "h5py",

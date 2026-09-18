@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from conftest import TEST_DATA, measure_event_loop_gap
 
-from torchsiggui.files.file_io import DATASET_FOLDER
+from torchsiggui.files.file_io import SESSION_FOLDER
 from torchsiggui.app_write_spectrogram import create_sample_image
 from torchsiggui.files.database_io import (
   run_query,
@@ -56,7 +56,7 @@ async def test_post_write_sample_function(affixed_client):
   spectrogram_filename = await run_query(queries.get_spectrogram_details)
   assert not spectrogram_filename['current_name']
 
-  images = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.png']
+  images = [file for file in SESSION_FOLDER.iterdir() if file.suffix == '.png']
   assert not images
 
   # Get the JSON payload
@@ -64,14 +64,14 @@ async def test_post_write_sample_function(affixed_client):
     payload = json.load(test_json_file)
 
   # Create the image file
-  assert DATASET_FOLDER.exists()
+  assert SESSION_FOLDER.exists()
   await create_sample_image(payload)
 
   # An image file should be created
   spectrogram_filename = await run_query(queries.get_spectrogram_details)
   assert spectrogram_filename['current_name']
 
-  images = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.png']
+  images = [file for file in SESSION_FOLDER.iterdir() if file.suffix == '.png']
   assert images
 def test_matplotlib_uses_agg_backend():
   # The server should plot with the non-interactive Agg backend, since it may run without a display

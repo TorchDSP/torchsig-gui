@@ -3,11 +3,14 @@ import {
   selectDatasetDetail,
   selectDatasetFormSeedEntry,
   selectDatasetFormLengthEntry,
+  selectDatasetFormLocationEntry,
+  selectDatasetServerHostname,
   selectDatasetFormOverwriteEntry,
   selectDatasetFormMultithreadingEntry,
   setDatasetFormSeedEntry,
   setDatasetFormLengthEntry,
   setDatasetFormFilenameEntry,
+  setDatasetFormLocationEntry,
   setDatasetFormOverwriteEntry,
   setDatasetFormMultithreadingEntry
 } from "@/features/dataset-form/dataset-slice";
@@ -99,6 +102,34 @@ export function DatasetFormFilenameStringInput({ id }: { id: string }) {
       id={id}
       onChange={onDatasetFormStringInputChange}
       label={label}
+      hint={hint}
+    />
+  );
+}
+
+// Creates a dataset form input field for the save location to display to the user
+// - Names the machine running the server, since the location is a folder there and not on the browser's machine
+export function DatasetFormLocationInput({ id }: { id: string }) {
+  // Get the details for this input field
+  const { label, hint } = useAppSelector(state => selectDatasetDetail(state, id));
+
+  // Get the current store value, the server hostname, and dispatch function
+  const value = useAppSelector(state => selectDatasetFormLocationEntry(state));
+  const hostname = useAppSelector(state => selectDatasetServerHostname(state));
+  const dispatch = useAppDispatch();
+
+  // Define the dispatch function to call when the input is changed
+  function onDatasetFormStringInputChange (e: ChangeEvent<HTMLInputElement, Element>) {
+    dispatch(setDatasetFormLocationEntry(e.currentTarget.value.trim()))
+  }
+
+  // Return the dataset form input
+  return (
+    <FormFileInput
+      id={id}
+      value={value}
+      onChange={onDatasetFormStringInputChange}
+      label={hostname ? label + " on " + hostname : label}
       hint={hint}
     />
   );

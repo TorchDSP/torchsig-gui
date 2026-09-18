@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 // (This component must contain the <html> and <body> elements by Next.js specification)
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   // Set the default theme
-  const defaultMode = "dark";
+  const defaultMode = "light";
 
   // Return the layout component to display to the user
   return (

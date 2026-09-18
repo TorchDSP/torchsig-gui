@@ -1,20 +1,19 @@
 import asyncio
 import concurrent.futures
+import os
 import threading
+import yaml
 
 from pathlib import Path
 from typing import Any
 
 from torchsiggui.files.database_io import (
+  DuplicateFileError,
   generate_file_entry,
   run_query,
   queries
 )
-from torchsiggui.files.file_io import (
-  DATASET_FOLDER,
-  ARCHIVE_EXTENSION,
-  create_archive_file
-)
+from torchsiggui.files.file_io import SERVER_HOSTNAME, get_default_dataset_location
 from torchsiggui.utils.torchsig_interface import (
   torchsig_custom_dataset,
   torchsig_custom_dataloader,
@@ -42,21 +41,73 @@ def validate_dataset_name(name) -> None:
   ):
     raise ValueError(f'Invalid dataset name: {name!r}')
 
+# Reads whether a folder holds a TorchSig dataset, and whether that dataset finished writing
+#   Returns None if the folder has no TorchSig writer info, otherwise the writer's complete flag
+def read_dataset_complete(folder: Path) -> bool | None:
+  writer_info_path = folder / 'writer_info.yaml'
+  if not writer_info_path.is_file():
+    return None
+  try:
+    with open(writer_info_path) as writer_info_file:
+      writer_info = yaml.safe_load(writer_info_file) or {}
+  except (OSError, yaml.YAMLError):
+    return False
+  return bool(writer_info.get('complete', False))
+
+# Checks the save location and returns the folder the dataset will be written to, <location>/<name>
+#   The path is on the machine running the server, which may not be the machine running the browser
+#   TorchSig deletes and recreates the dataset folder before writing, so this only allows a new folder,
+#   or, with overwrite on, a folder that already holds a TorchSig dataset
+#   Raises ValueError for an unusable location and DuplicateFileError if the dataset folder already exists
+def resolve_dataset_folder(location, name, overwrite: bool) -> Path:
+  # Reject names that could write outside the save location
+  validate_dataset_name(name)
+
+  # Get the save location, expanding ~ to the home folder of the account running the server
+  if not isinstance(location, str) or not location.strip():
+    raise ValueError(f'Enter a save location on {SERVER_HOSTNAME}.')
+  location = location.strip()
+  location_path = Path(location).expanduser()
+  if not location_path.is_absolute():
+    raise ValueError(f"The save location '{location}' must be a full path on {SERVER_HOSTNAME}.")
+
+  # Create the default location the first time it is used; other locations must already exist
+  if location_path == get_default_dataset_location():
+    location_path.mkdir(parents=True, exist_ok=True)
+  if not location_path.is_dir():
+    raise ValueError(f"The save location '{location}' is not a folder on {SERVER_HOSTNAME}.")
+  if not os.access(location_path, os.W_OK | os.X_OK):
+    raise ValueError(f"The save location '{location}' is not writable on {SERVER_HOSTNAME}.")
+
+  # Check that the dataset folder is new, or an existing TorchSig dataset that may be overwritten
+  dataset_folder = location_path.resolve() / name
+  if dataset_folder.is_symlink() or dataset_folder.exists():
+    if not overwrite:
+      raise DuplicateFileError(f"'{dataset_folder}' already exists. Choose a different name, or turn on Overwrite to replace an existing dataset.")
+    if dataset_folder.is_symlink() or not dataset_folder.is_dir() or read_dataset_complete(dataset_folder) is None:
+      raise ValueError(f"'{dataset_folder}' already exists and is not a TorchSig dataset, so it will not be replaced. Choose a different name.")
+
+  # Return the dataset folder
+  return dataset_folder
+
 # Tracks a new file and returns its id
-#   Raises ValueError for an invalid name and DuplicateFileError if the name is already in use
+#   Raises ValueError for an invalid name or location and DuplicateFileError if the dataset folder is already in use
 async def track_new_file(data_json):
-  # Get the filename and total length from the form data
-  filename = data_json['dataset']['root']
-  total_batches = data_json['dataset']['length']
+  # Get the dataset name, save location, overwrite setting, and total length from the form data
+  dataset_json = data_json['dataset']
+  name = dataset_json['root']
+  location = dataset_json.get('location') or str(get_default_dataset_location())
+  overwrite = bool(dataset_json['overwrite'])
+  total_batches = dataset_json['length']
 
-  # Reject names that could write outside the dataset folder
-  validate_dataset_name(filename)
+  # Check the save location and get the folder the dataset will be written to
+  dataset_folder = await asyncio.to_thread(resolve_dataset_folder, location, name, overwrite)
 
-  # Generate a new file entry for this file and keep the file id
-  new_file_id = await generate_file_entry(total_batches, filename + '.' + ARCHIVE_EXTENSION)
+  # Generate a new file entry for this dataset and keep the file id
+  new_file_id = await generate_file_entry(total_batches, str(dataset_folder))
 
-  # Update the data json root to be absolute for future processing
-  data_json['dataset']['root'] = DATASET_FOLDER / new_file_id / filename
+  # Update the data json root to the dataset folder for future processing
+  dataset_json['root'] = dataset_folder
 
   # Return the file id
   return new_file_id
@@ -86,7 +137,7 @@ def _build_dataset_creator(data_json, file_id, run_query_sync):
   # Return the built dataset creator
   return creator
 
-# Writes the dataset file and its archive from user input
+# Writes the dataset files from user input
 #   Runs in a worker thread, so the slow TorchSig and file work does not block the server
 #   Uses run_query_sync to run database queries on the server's event loop
 def _write_dataset_file(data_json, file_id, run_query_sync) -> None:
@@ -179,13 +230,11 @@ def _write_dataset_file(data_json, file_id, run_query_sync) -> None:
         dataset_creator.items_written += batch_len
         run_query_sync(queries.update_file_progress, file_id=file_id)
 
-  # Write final YAMLs
-  run_query_sync(queries.update_current_status, file_id=file_id, new_status='Assembling Archive File...')
+  # Write final YAMLs, marking the dataset complete only if it was not cancelled
+  run_query_sync(queries.update_current_status, file_id=file_id, new_status='Writing Dataset Info...')
   update_dataset_yaml(dataset_creator)
-  update_writer_yaml(dataset_creator, complete=True)
-
-  # Create an archive file containing all dataset resources
-  create_archive_file(dataset_creator.root.name, dataset_creator.root.parent)
+  cancelled = run_query_sync(queries.get_is_cancelled, file_id=file_id)
+  update_writer_yaml(dataset_creator, complete=not cancelled)
 
   # Validate that all signals have been written to the dataset
   complete_status = 'Complete'

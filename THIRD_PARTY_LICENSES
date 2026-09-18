@@ -4,7 +4,6 @@
 
 | Name                                         | Version                         | License           | License File Location         |
 |----------------------------------------------|---------------------------------|-------------------|-------------------------------|
-| aiofiles                                     | 25.1.0                          | Apache-2.0        | licenses/LICENSE.APACHE       |
 | aiosql                                       | 15.0                            | BSD-2-Clause      | licenses/LICENSE.BSD2         |
 | psutil                                       | 7.2.2                           | BSD-3-Clause      | licenses/LICENSE.BSD3         |
 | uvicorn                                      | 0.52.4                          | BSD-3-Clause      | licenses/LICENSE.BSD3         |

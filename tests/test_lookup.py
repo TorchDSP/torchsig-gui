@@ -3,6 +3,7 @@
 
 from torchsig.utils.defaults import TorchSigDefaults
 
+from torchsiggui.files.file_io import SERVER_HOSTNAME
 from torchsiggui.utils.torchsig_interface import (
   torchsig_transform_map,
   torchsig_generators_by_family,
@@ -47,7 +48,7 @@ def test_get_transform_options(affixed_client):
   transform_options = response.json()
   assert torchsig_transform_map().keys() == transform_options.keys()
 
-def test_get_dataset_defaults(affixed_client):
+def test_get_dataset_defaults(affixed_client, affixed_dataset_location):
   # Get the dataset defaults from the server
   response = affixed_client.get('/api/dataset-defaults')
 
@@ -56,5 +57,7 @@ def test_get_dataset_defaults(affixed_client):
 
   default_creator = torchsig_dummy_creator()
   dataset_defaults = response.json()
-  assert default_creator.overwrite == dataset_defaults['overwrite']
+  assert dataset_defaults['overwrite'] is False
   assert default_creator.multithreading == dataset_defaults['multithreading']
+  assert dataset_defaults['location'] == str(affixed_dataset_location)
+  assert dataset_defaults['hostname'] == SERVER_HOSTNAME

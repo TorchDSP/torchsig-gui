@@ -95,6 +95,7 @@ async def get_file_info():
       result = dict()
       for row in raw_result:
         file_id = row.pop('id')
+        row['complete'] = bool(row['complete'])
         row['ready'] = bool(row['ready'])
         result[file_id] = row
 
@@ -116,7 +117,9 @@ async def generate_file_entry(total: int, filepath: str):
     # If the file id collides, try again; if the file path is already in use, stop
     except aiosqlite.IntegrityError as error:
       if 'filepath' in str(error):
-        raise DuplicateFileError(f'{filepath} already exists') from error
+        raise DuplicateFileError(
+          f"A dataset at '{filepath}' already exists in the dataset list. Remove it from the list, or choose a different name."
+        ) from error
       continue
 
 # Generates a new spectrogram filename

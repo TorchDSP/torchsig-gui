@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 
 from matplotlib.figure import Figure  # noqa: E402
 
-from torchsiggui.files.file_io import DATASET_FOLDER  # noqa: E402
+from torchsiggui.files.file_io import SESSION_FOLDER  # noqa: E402
 from torchsiggui.files.database_io import (  # noqa: E402
   generate_spectrogram_filename,
   run_query,
@@ -70,7 +70,7 @@ def _write_sample_image(data_json, image_name) -> None:
     ax.grid()
 
   # Save the image
-  fig.savefig(DATASET_FOLDER / image_name)
+  fig.savefig(SESSION_FOLDER / image_name)
 
 # Generates an image for a signal generated from user input
 async def create_sample_image(data_json) -> None:

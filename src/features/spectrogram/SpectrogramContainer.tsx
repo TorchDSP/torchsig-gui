@@ -1,9 +1,9 @@
 import { AppStore } from "@/store/store";
 import { useAppStore } from "@/store/hooks";
-import { usePostWriteSampleMutation, usePostWriteDatasetMutation, useGetDownloadsQuery } from "@/api/api-slice";
+import { usePostWriteSampleMutation, usePostWriteDatasetMutation, useGetLiveUpdatesQuery } from "@/api/api-slice";
 
 import SpectrogramImage from "@/features/spectrogram/SpectrogramImage";
-import DownloadList from "@/features/spectrogram/DownloadList";
+import DatasetList from "@/features/spectrogram/DatasetList";
 
 import { useState } from "react";
 
@@ -58,8 +58,8 @@ export default function SpectrogramContainer() {
   // - This is needed to avoid rerendering on updates to the form state
   const storeRef = useAppStore();
 
-  // Get the current downloads info
-  const { data } = useGetDownloadsQuery();
+  // Get the current sample and dataset info
+  const { data } = useGetLiveUpdatesQuery();
 
   // Get the trigger functions for writing sample spectrograms and dataset files
   const [ saveNewSample, {} ] = usePostWriteSampleMutation();
@@ -108,7 +108,7 @@ export default function SpectrogramContainer() {
           {datasetError}
         </Alert>
       )}
-      <DownloadList downloadMap={data?.downloadMap ?? {}} />
+      <DatasetList datasetMap={data?.datasetMap ?? {}} />
     </Card>
   );
 }

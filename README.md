@@ -45,7 +45,9 @@ torchsiggui --help
 
 You can also configure the server with a `.env` file in the folder where you start the server, matching the format of [`.env.example`](.env.example).
 
-Datasets and spectrogram images are stored in your user cache folder:
+Datasets are written to the save location you choose in the interface, `~/torchsig_datasets` by default. Set the `TORCHSIGGUI_DATASET_LOCATION` environment variable to change the default.
+
+While the server runs, it keeps spectrogram previews and its working files in your user cache folder, and removes them when it stops:
 
 - Linux: `~/.cache/torchsiggui` (or `$XDG_CACHE_HOME/torchsiggui`)
 - macOS: `~/Library/Caches/torchsiggui`
@@ -87,15 +89,38 @@ TorchSigGUI can run on a remote machine, such as a GPU server, while you use the
 
 If port 8000 is already in use on your computer, pick another local port. For example, `ssh -N -L 9000:localhost:8000 <user>@<server>` makes the interface available at `http://localhost:9000`. If you started the server with `--port`, use that port as the server port.
 
-Datasets are generated and stored on the remote server. The **Download** button saves them through the tunnel to your computer, so download any datasets you want to keep before you stop the server.
+Datasets are generated and stored on the remote server, in the save location you choose. The interface shows the server's name next to the **Save Location** field, so enter a folder path on the server, not on your computer. Datasets stay on the server after it stops. Use them there, or copy them to your computer, for example with `rsync -a <user>@<server>:~/torchsig_datasets/<name> .`
 
 ## Using the Interface
 
-Open the printed URL in your browser to load the interface. Adjust the settings as needed, then test your input with the **Generate Sample** button near the bottom right of the window. When you're ready, create your dataset with the **Generate Dataset** button next to it. Give each dataset a unique name.
+Open the printed URL in your browser to load the interface. Adjust the settings as needed, then test your input with the **Generate Sample** button near the bottom right of the window.
 
-After you press **Generate Dataset**, a new section appears in the bottom right of the window showing progress for that dataset. When the dataset is finished, click its **Download** button to save it to your machine as a `.zip` file. You can remove a dataset at any time with its **Cancel** button.
+When you're ready, set the dataset's **Save Location** and **Dataset Name**, then press the **Generate Dataset** button next to **Generate Sample**. The dataset is written to a new folder, `<save location>/<dataset name>`, on the machine running the server. The save location must already exist, except for the default `~/torchsig_datasets`, which is created for you.
 
-***All datasets and spectrogram images are removed from your device when you stop the server.***
+If a folder with that name already exists, the dataset is not started. Turn on **Overwrite** to replace an earlier TorchSig dataset with the same name. Folders that are not TorchSig datasets are never replaced.
+
+After you press **Generate Dataset**, a new section appears in the bottom right of the window showing the dataset's progress and the folder it is written to:
+
+- **Cancel** stops a dataset that is still being written and deletes its partial folder.
+- **Delete** removes a dataset that failed, along with its partial folder.
+- **Remove from List** hides a finished dataset from the list. Its files are kept.
+
+Finished datasets are kept after you stop the server. Spectrogram previews are removed.
+
+### Loading a Dataset
+
+Each dataset folder holds a `data.h5` file with the signals, and `dataset_info.yaml` and `writer_info.yaml` files describing how it was made. Load it with TorchSig:
+
+```python
+from pathlib import Path
+from torchsig.datasets.datasets import StaticTorchSigDataset
+
+root = Path('~/torchsig_datasets/<dataset name>').expanduser()
+dataset = StaticTorchSigDataset(root=str(root), target_labels=['class_name'])
+data, targets = dataset[0]
+```
+
+The interface also shows each finished dataset's full path, with a line you can copy to load it.
 
 ## Development
 
