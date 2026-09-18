@@ -6,10 +6,14 @@ from fastapi.testclient import TestClient
 import json
 import pytest
 import pytest_asyncio
+from pathlib import Path
 
 from torchsiggui.main import create_app
 from torchsiggui.app_write_dataset import create_dataset_file
 from torchsiggui.files.database_io import get_file_info
+
+# Resolves test data relative to this file so the tests run from any directory
+TEST_DATA = Path(__file__).resolve().parent / 'test_data'
 
 # UTILITY FUNCTIONS
 # Generates a dataset file and returns the file id
@@ -44,7 +48,7 @@ def affixed_client():
 @pytest_asyncio.fixture
 async def affixed_test_dataset_file(affixed_client):
   # Generate the dataset file and get its id
-  test_file_id = generate_test_dataset_file('./test_data/data_default.json')
+  test_file_id = generate_test_dataset_file(TEST_DATA / 'data_default.json')
 
   # Return the test file id
   yield test_file_id
@@ -53,7 +57,7 @@ async def affixed_test_dataset_file(affixed_client):
 @pytest_asyncio.fixture
 async def affixed_test_spectrogram_dataset_file(affixed_client):
   # Generate the dataset file and get its id
-  test_file_id = generate_test_dataset_file('./test_data/data_spectrogram.json')
+  test_file_id = generate_test_dataset_file(TEST_DATA / 'data_spectrogram.json')
 
   # Return the test file id
   yield test_file_id

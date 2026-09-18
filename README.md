@@ -126,11 +126,19 @@ This opens a development page showing the current state of the interface. Interf
 
 ### Testing
 
-The repository uses pytest to test the API. From the `tests/` folder, run:
+The repository uses pytest to test the API. From the cloned repository, run:
 
 ```
 pytest
 ```
+
+To run the same checks as CI (linting, type checking, the API tests, and the interface build), run:
+
+```
+make check
+```
+
+The interface is served from the committed build in `torchsiggui/webbuild`, so after changing the interface, rebuild it with `make build-web` and commit the result. Run `make help` to list the other available tasks.
 
 ## License
 

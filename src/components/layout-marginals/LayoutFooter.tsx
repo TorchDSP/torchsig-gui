@@ -15,7 +15,7 @@ export default function LayoutFooter() {
           <Col><a href="https://torchsig.com">TorchSig Main Site</a></Col>
           <Col><a href="https://torchsig.readthedocs.io/latest">TorchSig Documentation</a></Col>
           <Col><a href="https://github.com/TorchDSP/torchsig">TorchSig GitHub</a></Col>
-          <Col><a href="#">TorchSig GUI GitHub</a></Col>
+          <Col><a href="https://github.com/TorchDSP/torchsig-gui">TorchSig GUI GitHub</a></Col>
         </Row>
       </Container>
     </Navbar>

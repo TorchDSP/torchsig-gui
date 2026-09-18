@@ -41,18 +41,29 @@ async def create_sample_image(data_json) -> None:
     sample = next(dataset)
     data = sample.data
 
-    # Set the sample rate for the spectrogram
-    t = np.arange(0, len(data)) / dataset.sample_rate
-
-    # Plot the spectrogram image
+    # Plot the sample image
     fig = plt.figure(figsize=(12, 4))
     ax = fig.add_subplot(1, 1, 1)
-    ax.plot(t, np.real(data), alpha=0.5, label='Real')
-    ax.plot(t, np.imag(data), alpha=0.5, label='Imag')
-    ax.set_xlim([t[0], t[-1]])
-    ax.set_xlabel('Time (sec)')
-    ax.set_ylabel('Amplitude')
-    ax.grid()
+    fs = dataset.sample_rate
+
+    # A Spectrogram transform outputs a 2D real array (frequency x time, highest frequency in row 0)
+    if data.ndim == 2 and not np.iscomplexobj(data):
+      duration = data_json['metadata']['num_iq_samples_dataset'] / fs
+      img = ax.imshow(data, aspect='auto', origin='upper', cmap='viridis',
+        extent=[0, duration, -fs / 2, fs / 2])
+      fig.colorbar(img, ax=ax, label='Power (dB)')
+      ax.set_xlabel('Time (sec)')
+      ax.set_ylabel('Frequency (Hz)')
+
+    # Otherwise the data is I/Q, so plot it in the time domain
+    else:
+      t = np.arange(0, len(data)) / fs
+      ax.plot(t, np.real(data), alpha=0.5, label='Real')
+      ax.plot(t, np.imag(data), alpha=0.5, label='Imag')
+      ax.set_xlim([t[0], t[-1]])
+      ax.set_xlabel('Time (sec)')
+      ax.set_ylabel('Amplitude')
+      ax.grid()
 
     # Save the image, and close the plotter
     plt.savefig(DATASET_FOLDER / image_name)

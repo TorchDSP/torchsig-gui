@@ -5,10 +5,10 @@ PYTHON ?= python
 NPM ?= npm
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-api install-web dev-api dev-web build-web test lint lint-api lint-web check package clean
+.PHONY: help install install-api install-web dev-api dev-web build-web test lint lint-api lint-web check check-webbuild package clean
 
 help: ## List the available targets
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
 install: install-api install-web ## Install the API and interface development dependencies
 
@@ -27,8 +27,8 @@ dev-web: ## Start the interface development server
 build-web: ## Build the interface into torchsiggui/webbuild
 	$(NPM) run build
 
-test: ## Run the API tests (from tests/, since they load data by relative path)
-	cd tests && $(PYTHON) -m pytest
+test: ## Run the API tests
+	$(PYTHON) -m pytest
 
 lint: lint-api lint-web ## Run all linters and the type check
 
@@ -39,9 +39,12 @@ lint-web: ## Lint and type check the interface
 	$(NPM) run lint
 	npx tsc --noEmit
 
-check: lint test build-web ## Run the same checks as CI
+check: lint test build-web check-webbuild ## Run the same checks as CI
+
+check-webbuild: ## Fail if torchsiggui/webbuild differs from the committed build
 	@if [ -n "$$(git status --porcelain torchsiggui/webbuild)" ]; then \
-		echo "torchsiggui/webbuild is out of date. Commit the rebuilt interface."; \
+		git status --porcelain torchsiggui/webbuild; \
+		echo "torchsiggui/webbuild is out of date. Run 'make build-web' and commit the result."; \
 		exit 1; \
 	fi
 

@@ -45,7 +45,7 @@ export default function TransformForm() {
   return (
     <Container fluid>
       <Row className="d-inline-flex"><Button onClick={openModal}>Add Transform</Button></Row>
-      <TransformAddModal id={currentId} parent="main" show={currentId != ""} setId={setCurrentId} />
+      <TransformAddModal id={currentId} show={currentId != ""} setId={setCurrentId} />
       <TransformDragDropProvider>
         { ids.map(id => <TransformSortable key={id} id={id} />) }
       </TransformDragDropProvider>

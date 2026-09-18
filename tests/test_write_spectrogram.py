@@ -5,6 +5,8 @@ import json
 import pytest
 from unittest.mock import patch
 
+from conftest import TEST_DATA
+
 from torchsiggui.files.file_io import DATASET_FOLDER
 from torchsiggui.app_write_spectrogram import create_sample_image
 from torchsiggui.files.database_io import (
@@ -15,7 +17,7 @@ from torchsiggui.files.database_io import (
 @patch('torchsiggui.app.create_sample_image')
 def test_post_write_sample_response_success(mock_bg_task, affixed_client):
   # Send the post to the client with the JSON payload
-  with open('./test_data/data_default.json') as test_json_file:
+  with open(TEST_DATA / 'data_default.json') as test_json_file:
     payload = json.load(test_json_file)
   response = affixed_client.post('/api/write-sample', json=payload)
 
@@ -56,7 +58,7 @@ async def test_post_write_sample_function(affixed_client):
   assert not images
 
   # Get the JSON payload
-  with open('./test_data/data_default.json') as test_json_file:
+  with open(TEST_DATA / 'data_default.json') as test_json_file:
     payload = json.load(test_json_file)
 
   # Create the image file

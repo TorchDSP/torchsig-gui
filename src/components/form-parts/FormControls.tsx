@@ -6,7 +6,7 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import { OverlayInjectedProps } from "react-bootstrap/Overlay";
 import Tooltip from "react-bootstrap/Tooltip";
 
-import Select, { ActionMeta, MultiValue } from "react-select";
+import Select, { MultiValue } from "react-select";
 
 // Creates a hint badge to display a hint tooltip to the user
 function HintBadge({ hint }: { hint: string }) {
@@ -106,7 +106,7 @@ export function FormCheckbox({ id, checked, onChange, label, hint }: { id: strin
 
 // Defines a converter function for handling onChange output
 function onChangeWrapper(onChange: CallableFunction) {
-  return (value: FormOption | null, _action: ActionMeta<FormOption>): void => {
+  return (value: FormOption | null): void => {
     onChange(value?.value ?? "");
   };
 }
@@ -135,7 +135,7 @@ export function FormOptionSelect({ id, values, value, onChange, label, hint }: {
 
 // Defines a converter function for handling onChange output
 function onMultiChangeWrapper(onChange: CallableFunction) {
-  return (multiValue: MultiValue<FormOption>, _action: ActionMeta<FormOption>): void => {
+  return (multiValue: MultiValue<FormOption>): void => {
     const newValues : string[] = [];
     multiValue.forEach(value => newValues.push(value.value));
     onChange(newValues ?? []);

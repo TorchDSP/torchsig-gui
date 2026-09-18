@@ -13,7 +13,7 @@ import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 
 // Creates a Transform addition modal to display to the user
-export default function TransformAddModal({ id, parent, show, setId }: { id: string, parent: string, show: boolean, setId: CallableFunction }) {
+export default function TransformAddModal({ id, show, setId }: { id: string, show: boolean, setId: CallableFunction }) {
   // Get the dispatch function
   const dispatch = useAppDispatch();
 

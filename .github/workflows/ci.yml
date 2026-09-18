@@ -33,15 +33,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e ".[dev]"
+          make install-api
 
       - name: Lint
-        run: ruff check .
+        run: make lint-api
 
-      # The tests load their data files by relative path, so they run from tests/
       - name: Test
-        working-directory: tests
-        run: pytest
+        run: make test
 
   interface:
     name: Interface
@@ -55,22 +53,14 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: make install-web
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Type check
-        run: npx tsc --noEmit
+      - name: Lint and type check
+        run: make lint-web
 
       - name: Build
-        run: npm run build
+        run: make build-web
 
       # The server ships the committed build, so it must match the source
       - name: Check committed build is up to date
-        run: |
-          if [ -n "$(git status --porcelain torchsiggui/webbuild)" ]; then
-            git status --porcelain torchsiggui/webbuild
-            echo "::error::torchsiggui/webbuild is out of date. Run 'npm run build' and commit the result."
-            exit 1
-          fi
+        run: make check-webbuild

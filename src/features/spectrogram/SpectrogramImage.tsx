@@ -8,8 +8,11 @@ export default function SpectrogramContainer({ filename, hasLoaded, setHasLoaded
     <div className="d-flex justify-content-center align-items-center" style={{aspectRatio: 3 / 1}}>
       { hasLoaded && filename.length === 0 && <p>No Spectrogram Generated.</p> }
       { !hasLoaded && <DataLoadingSpinner /> }
+      {/* next/image adds nothing here: the static export serves unoptimized images from a dynamic API URL */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={buildImageLink(filename)}
+        alt="Spectrogram"
         fetchPriority="low"
         onLoad={() => setHasLoaded(true)}
         style={{

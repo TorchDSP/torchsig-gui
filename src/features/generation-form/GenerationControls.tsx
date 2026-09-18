@@ -174,12 +174,10 @@ function GeneratorBubble({ id, likelihood }: { id: string, likelihood: number })
               aria-describedby={bubbleLabel}
               value={likelihood}
               onChange={(e) => {
+                // Ignores non-number input, so the field keeps its last valid value
                 const newLikelihood = Number(e.currentTarget.value);
                 if (!isNaN(newLikelihood)) {
                   dispatch(setGeneratorLikelihoodById(id, newLikelihood));
-                }
-                else {
-                  console.log("Error: Attempted to create a non-number likelihood!");
                 }
               }}
             />
