@@ -26,6 +26,11 @@ INSERT INTO spectrogram_table (current_name, complete)
     SELECT 1 FROM spectrogram_table
 );
 
+-- name: clear_session_state()#
+-- Removes the file and spectrogram records left by a previous session
+DELETE FROM file_table;
+UPDATE spectrogram_table SET current_name = '', complete = 1;
+
 
 
 -- WORKER TABLE QUERY STATEMENTS

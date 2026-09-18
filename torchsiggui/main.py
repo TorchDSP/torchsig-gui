@@ -92,6 +92,11 @@ async def startup_shutdown(app: FastAPI):
   # Remove any records of crashed workers
   await remove_crashed_workers()
 
+  # If no other worker is running, clear the records left by a previous session
+  # - Shutdown deletes the database, but on Windows the delete can fail while another program has the file open
+  if await run_query(queries.get_worker_count) == 0:
+    await run_query(queries.clear_session_state)
+
   # Add a new worker record for this worker
   pid = getpid()
   created = psutil.Process(pid).create_time()

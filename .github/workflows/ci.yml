@@ -54,6 +54,9 @@ jobs:
   interface:
     name: Interface
     runs-on: ubuntu-24.04
+    # Turns off the Next.js telemetry notice and data collection in CI
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
     steps:
       - uses: actions/checkout@v7
 
@@ -68,6 +71,14 @@ jobs:
 
       - name: Lint and type check
         run: make lint-web
+
+      # Reuses the Next.js build cache between runs so rebuilds are faster
+      - uses: actions/cache@v6
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', '*.ts', '*.mjs', '*.json') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
 
       - name: Build
         run: make build-web
