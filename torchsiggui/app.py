@@ -11,6 +11,7 @@ from torchsiggui.files.database_io import (
 )
 
 import aiofiles
+import logging
 
 from asyncio import sleep, create_task, to_thread
 from pathlib import Path
@@ -28,6 +29,18 @@ from fastapi.responses import StreamingResponse
 
 # Creates a router to store the server routes
 router = APIRouter()
+
+# Creates a logger for files that could not be deleted
+logger = logging.getLogger(__name__)
+
+# Deletes a file, logging instead of failing if it cannot be removed
+# - Windows cannot delete a file while it is open, such as an image or archive that is still being sent to a browser
+# - Any file left behind is removed with the dataset folder when the server shuts down
+def remove_file(file_path: Path) -> None:
+  try:
+    file_path.unlink(missing_ok=True)
+  except OSError as error:
+    logger.warning('Could not delete %s: %s', file_path, error)
 
 # FASTAPI REQUEST HANDLERS
 # Connects requests from the client to API functions and returns the results
@@ -154,8 +167,8 @@ async def delete_cancel_dataset(file_id: str):
   # Delete the cancelled file, in a worker thread since large datasets can take a while to remove
   await run_query(queries.delete_file_entry, file_id=file_id)
   if folder_path.exists():
-    await to_thread(rmtree, folder_path)
-  archive_path.unlink(missing_ok=True)
+    await to_thread(rmtree, folder_path, ignore_errors=True)
+  remove_file(archive_path)
 
   # Return a success message
   return { 'message': 'success' }
@@ -180,8 +193,7 @@ async def websocket_endpoint(websocket: WebSocket):
       if this_image != last_image and this_image['current_name'] and this_image['complete']:
         await websocket.send_json({ 'type': 'spectrogram', 'update': this_image['current_name'] })
         if 'current_name' in last_image:
-          old_file = Path(DATASET_FOLDER / last_image['current_name'])
-          old_file.unlink(missing_ok=True)
+          remove_file(DATASET_FOLDER / last_image['current_name'])
         last_image = this_image
 
       # Return control to the FastAPI event loop to process other requests between checks

@@ -58,6 +58,8 @@ This lints the Python code (`ruff check .`), lints and type checks the interface
 
 Run `make help` to list the other tasks.
 
+The `Makefile` uses Unix shell commands. On Windows, run `make` from Git Bash or WSL, or run the commands listed above directly.
+
 ### Tests
 
 The API tests use pytest and live in `tests/`. Add or update tests for any API change. Bug fixes should include a test that fails without the fix.

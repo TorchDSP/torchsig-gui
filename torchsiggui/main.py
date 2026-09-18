@@ -112,9 +112,10 @@ async def startup_shutdown(app: FastAPI):
   await run_query(queries.delete_worker_entry, process_id=pid)
 
   # If this is the last worker to shut down, also delete the database and dataset folder
+  # - Ignores files that cannot be deleted, such as files another program still has open on Windows, so shutdown still completes
   active_workers = await run_query(queries.get_worker_count)
   if active_workers == 0:
-    rmtree(DATASET_FOLDER)
+    rmtree(DATASET_FOLDER, ignore_errors=True)
 
 # Creates a configured server application instance
 def create_app():

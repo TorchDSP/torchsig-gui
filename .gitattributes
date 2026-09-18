@@ -1,3 +1,9 @@
+# Checks out text files with LF line endings on every platform, so Windows checkouts match the committed build
+* text=auto eol=lf
+
+# Keeps the license text exactly as distributed, including its original line endings
+licenses/LICENSE.INTERFACE -text
+
 # Built interface: mark as generated so it is collapsed in diffs and excluded from language stats
 torchsiggui/webbuild/** linguist-generated=true -diff
 package-lock.json linguist-generated=true

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS file_table (
   current_status TEXT NOT NULL,
   progress INTEGER NOT NULL,
   total INTEGER NOT NULL,
-  filepath TEXT NOT NULL UNIQUE,
+  filepath TEXT NOT NULL UNIQUE COLLATE NOCASE,
   complete INTEGER NOT NULL CHECK (complete IN (0, 1)),
   ready INTEGER NOT NULL CHECK (ready IN (0, 1)),
   cancelled INTEGER NOT NULL CHECK (cancelled IN (0, 1))

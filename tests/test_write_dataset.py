@@ -9,7 +9,7 @@ from unittest.mock import patch
 from conftest import TEST_DATA, measure_event_loop_gap
 
 from torchsiggui.app_write_dataset import create_dataset_file
-from torchsiggui.files.file_io import get_archive_extension, DATASET_FOLDER
+from torchsiggui.files.file_io import ARCHIVE_EXTENSION, DATASET_FOLDER
 from torchsiggui.files.database_io import (
   run_query,
   queries,
@@ -35,7 +35,7 @@ def test_post_write_dataset_response_success(mock_bg_task, affixed_client):
 async def test_post_write_dataset_websocket_success(affixed_client, subtests):
   # Define the input data for the websocket trigger functions
   test_file_id = 'test_id'
-  test_file_name = 'test_file' + '.' + get_archive_extension()
+  test_file_name = 'test_file' + '.' + ARCHIVE_EXTENSION
   test_len = 10
 
   # Define the output data expected from the websocket
@@ -82,7 +82,7 @@ async def test_post_write_dataset_function(affixed_client):
   file_info = await get_file_info()
   assert len(file_info) == 0
 
-  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + get_archive_extension()]
+  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + ARCHIVE_EXTENSION]
   assert not datasets
 
   # Get the JSON payload
@@ -97,7 +97,7 @@ async def test_post_write_dataset_function(affixed_client):
   file_info = await get_file_info()
   assert len(file_info) > 0
 
-  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + get_archive_extension()]
+  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + ARCHIVE_EXTENSION]
   assert datasets
 @patch('torchsiggui.app.create_dataset_file')
 def test_post_write_dataset_duplicate_name(mock_bg_task, affixed_client):
@@ -115,8 +115,28 @@ def test_post_write_dataset_duplicate_name(mock_bg_task, affixed_client):
   assert 'already exists' in response.json()['detail']
   mock_bg_task.assert_called_once()
 
+@patch('torchsiggui.app.create_dataset_file')
+def test_post_write_dataset_duplicate_name_different_case(mock_bg_task, affixed_client):
+  # Get the JSON payload
+  with open(TEST_DATA / 'data_default.json') as test_json_file:
+    payload = json.load(test_json_file)
+
+  # The first request with a name should succeed
+  response = affixed_client.post('/api/write-dataset', json=payload)
+  assert response.status_code == 200
+
+  # A name that differs only in case should be rejected, since macOS and Windows file systems ignore case
+  payload['dataset']['root'] = payload['dataset']['root'].swapcase()
+  response = affixed_client.post('/api/write-dataset', json=payload)
+  assert response.status_code == 409
+  mock_bg_task.assert_called_once()
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize('name', ['', '.', '..', '../escape', '/tmp/escape', 'nested/name', 'back\\slash', 123])
+@pytest.mark.parametrize('name', [
+  '', '.', '..', '../escape', '/tmp/escape', 'nested/name', 'back\\slash', 123,
+  'C:drive', 'stream:name', 'what?', 'star*', 'pipe|name', 'quote"name', 'less<name', 'tab\tname',
+  'trailing.', 'trailing ', 'CON', 'nul', 'Com1', 'lpt9.data',
+])
 @patch('torchsiggui.app.create_dataset_file')
 async def test_post_write_dataset_invalid_name(mock_bg_task, affixed_client, name):
   # Get the JSON payload and replace the dataset name

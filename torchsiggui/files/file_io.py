@@ -1,7 +1,8 @@
-from os import environ
+import sys
+
+from os import environ, walk
 from pathlib import Path
-from platform import system
-from shutil import make_archive, unpack_archive
+from zipfile import ZipFile, ZIP_STORED
 
 # DIRECTORY LOCATIONS
 # Creates variables to store the main application folders
@@ -9,24 +10,38 @@ MODULE_FOLDER = Path(__file__).resolve().parent.parent
 QUERY_FILE = MODULE_FOLDER / 'files' / 'database_sql.sql'
 WEBBUILD_FOLDER = MODULE_FOLDER / 'webbuild'
 
+# Returns the usual folder for application cache data on this operating system
+# - Windows: %LOCALAPPDATA%
+# - macOS: ~/Library/Caches
+# - Linux: $XDG_CACHE_HOME, or ~/.cache
+def get_cache_folder() -> Path:
+  if sys.platform == 'win32':
+    return Path(environ.get('LOCALAPPDATA') or Path.home() / 'AppData' / 'Local')
+  if sys.platform == 'darwin':
+    return Path.home() / 'Library' / 'Caches'
+  return Path(environ.get('XDG_CACHE_HOME') or Path.home() / '.cache')
+
 # Creates variables to store the external folders and files
 # - Uses TORCHSIGGUI_DATA_DIR if set, otherwise the user cache folder, so data is never written into the install location
-DATA_FOLDER = Path(environ.get('TORCHSIGGUI_DATA_DIR') or Path(environ.get('XDG_CACHE_HOME') or Path.home() / '.cache') / 'torchsiggui')
+DATA_FOLDER = Path(environ.get('TORCHSIGGUI_DATA_DIR') or get_cache_folder() / 'torchsiggui')
 DATASET_FOLDER = DATA_FOLDER / 'datasets'
 DATABASE = DATASET_FOLDER / 'state.db'
 
 # ARCHIVE FUNCTIONS
-# Determines the archive file extension
-def get_archive_extension():
-  return 'zip' if system() == 'Windows' else 'tar'
+# Datasets are always downloaded as zip files, since every operating system can open them without extra tools
+ARCHIVE_EXTENSION = 'zip'
 
-# Creates archive files
+# Creates an archive file in the dataset folder containing everything inside a folder
+# - Stores files without compression, since dataset files barely compress and compressing large datasets is slow
 def create_archive_file(filename: str, to_zip: Path):
-  make_archive((DATASET_FOLDER / filename), get_archive_extension(), root_dir=to_zip)
+  with ZipFile(DATASET_FOLDER / (filename + '.' + ARCHIVE_EXTENSION), 'w', ZIP_STORED) as archive:
+    for folder, folder_names, file_names in walk(to_zip):
+      folder_names.sort()
+      for name in folder_names + sorted(file_names):
+        path = Path(folder) / name
+        archive.write(path, path.relative_to(to_zip))
 
 # Extracts archive files
-def extract_archive_file(filename: str, dest: Path):
-  if get_archive_extension() == 'zip':
-    unpack_archive(filename, extract_dir=dest)
-  else:
-    unpack_archive(filename, extract_dir=dest, format='tar', filter='data')
+def extract_archive_file(filename: Path, dest: Path):
+  with ZipFile(filename) as archive:
+    archive.extractall(dest)

@@ -12,7 +12,7 @@ from torchsig.utils.file_handlers.hdf5 import HDF5Reader
 from torchsiggui.app_write_dataset import create_dataset_file
 from torchsiggui.files.file_io import (
   DATASET_FOLDER,
-  get_archive_extension,
+  ARCHIVE_EXTENSION,
   extract_archive_file
 )
 from torchsiggui.files.database_io import (
@@ -30,7 +30,7 @@ async def test_get_download_dataset_response_success(affixed_client, affixed_tes
   file_info = await get_file_info()
   assert len(file_info) > 0
 
-  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + get_archive_extension()]
+  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + ARCHIVE_EXTENSION]
   assert datasets
 
   # Get the dataset file directory by the id
@@ -47,7 +47,7 @@ async def test_get_download_dataset_response_success(affixed_client, affixed_tes
   assert "attachment" in response.headers.get("content-disposition", "")
 
   # The download should be an archive file with other files inside
-  archive_path = DATASET_FOLDER / ('archive.' + get_archive_extension())
+  archive_path = DATASET_FOLDER / ('archive.' + ARCHIVE_EXTENSION)
   with open(archive_path, 'wb') as f:
     f.write(response.content)
 
@@ -67,7 +67,7 @@ async def test_delete_cancel_dataset_response_success(affixed_client, affixed_te
   file_info = await get_file_info()
   assert len(file_info) > 0
 
-  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + get_archive_extension()]
+  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + ARCHIVE_EXTENSION]
   assert datasets
 
   # Send the DELETE request to the client with the dataset id
@@ -81,7 +81,7 @@ async def test_delete_cancel_dataset_response_success(affixed_client, affixed_te
   file_info = await get_file_info()
   assert len(file_info) == 0
 
-  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + get_archive_extension()]
+  datasets = [file for file in DATASET_FOLDER.iterdir() if file.suffix == '.' + ARCHIVE_EXTENSION]
   assert not datasets
 
 @pytest.mark.timeout(5)
@@ -110,7 +110,7 @@ async def test_delete_cancel_dataset_websocket_success(affixed_client, affixed_t
 async def test_get_download_dataset_not_ready(affixed_client):
   # Add a file entry that is still being written
   test_file_id = 'test_id'
-  await run_query(queries.add_file_entry, file_id=test_file_id, total=10, filepath='test_file.' + get_archive_extension())
+  await run_query(queries.add_file_entry, file_id=test_file_id, total=10, filepath='test_file.' + ARCHIVE_EXTENSION)
 
   # The download should be refused until the archive is ready
   response = affixed_client.get('/api/download-dataset/' + test_file_id)
@@ -120,7 +120,7 @@ async def test_get_download_dataset_not_ready(affixed_client):
 async def test_get_download_dataset_missing_archive(affixed_client):
   # Add a file entry that is marked ready, but has no archive file
   test_file_id = 'test_id'
-  await run_query(queries.add_file_entry, file_id=test_file_id, total=10, filepath='test_file.' + get_archive_extension())
+  await run_query(queries.add_file_entry, file_id=test_file_id, total=10, filepath='test_file.' + ARCHIVE_EXTENSION)
   await run_query(queries.complete_file, file_id=test_file_id, complete_status='Complete')
 
   # The download should report the missing file instead of failing mid-stream
@@ -158,3 +158,15 @@ async def test_delete_cancel_failed_dataset(affixed_client):
   # The failed dataset and its files should be removed
   assert await get_file_info() == {}
   assert not (DATASET_FOLDER / test_file_id).exists()
+
+@pytest.mark.timeout(10)
+@pytest.mark.asyncio
+async def test_delete_cancel_dataset_locked_archive(affixed_client, affixed_test_dataset_file):
+  # Simulate Windows refusing to delete an archive that is still being downloaded
+  test_file_id = affixed_test_dataset_file
+  with patch('pathlib.Path.unlink', side_effect=PermissionError('File in use')):
+    response = affixed_client.delete('/api/cancel-dataset/' + test_file_id)
+
+  # The cancel should still succeed and remove the file entry
+  assert response.status_code == 200
+  assert await get_file_info() == {}

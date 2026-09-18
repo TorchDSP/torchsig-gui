@@ -12,7 +12,7 @@ from torchsiggui.files.database_io import (
 )
 from torchsiggui.files.file_io import (
   DATASET_FOLDER,
-  get_archive_extension,
+  ARCHIVE_EXTENSION,
   create_archive_file
 )
 from torchsiggui.utils.torchsig_interface import (
@@ -22,9 +22,24 @@ from torchsiggui.utils.torchsig_interface import (
   update_writer_yaml
 )
 
-# Checks that a dataset name is a plain folder name, so it cannot write outside the dataset folder
+# Characters that are not allowed in Windows file names, plus control characters
+INVALID_NAME_CHARACTERS = set('<>:"/\\|?*') | {chr(code) for code in range(32)}
+
+# Device names that Windows reserves in every folder, with or without an extension
+RESERVED_NAMES = {'CON', 'PRN', 'AUX', 'NUL'} | {f'{device}{n}' for device in ('COM', 'LPT') for n in range(1, 10)}
+
+# Checks that a dataset name is a plain folder name that is valid on Windows, macOS, and Linux
+# - Rejects path separators and '..', so the name cannot write outside the dataset folder
+# - Applies the Windows naming rules on every platform, so a name that works on one server works on all of them
 def validate_dataset_name(name) -> None:
-  if not isinstance(name, str) or name in ('', '.', '..') or Path(name).name != name or '\\' in name:
+  if (
+    not isinstance(name, str)
+    or name in ('', '.', '..')
+    or Path(name).name != name
+    or any(char in INVALID_NAME_CHARACTERS for char in name)
+    or name[-1] in '. '
+    or name.split('.')[0].upper() in RESERVED_NAMES
+  ):
     raise ValueError(f'Invalid dataset name: {name!r}')
 
 # Tracks a new file and returns its id
@@ -38,7 +53,7 @@ async def track_new_file(data_json):
   validate_dataset_name(filename)
 
   # Generate a new file entry for this file and keep the file id
-  new_file_id = await generate_file_entry(total_batches, filename + '.' + get_archive_extension())
+  new_file_id = await generate_file_entry(total_batches, filename + '.' + ARCHIVE_EXTENSION)
 
   # Update the data json root to be absolute for future processing
   data_json['dataset']['root'] = DATASET_FOLDER / new_file_id / filename

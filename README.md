@@ -4,10 +4,10 @@ TorchSigGUI is an open-source graphical interface for [TorchSig](https://torchsi
 
 ## Prerequisites
 
-- Ubuntu &ge; 22.04
+- Linux (tested on Ubuntu &ge; 22.04), macOS, or Windows 10 or later
 - &ge; 1 TB of hard drive storage
 - CPU with &ge; 4 cores
-- GPU with &ge; 16 GB of memory (recommended)
+- GPU with &ge; 16 GB of memory (recommended; PyTorch does not support NVIDIA GPUs on macOS)
 - Python &ge; 3.10
 - [TorchSig](https://github.com/TorchDSP/torchsig) 2.2.0 (installed automatically)
 
@@ -45,7 +45,13 @@ torchsiggui --help
 
 You can also configure the server with a `.env` file in the folder where you start the server, matching the format of [`.env.example`](.env.example).
 
-Datasets and spectrogram images are stored in `~/.cache/torchsiggui` (or `$XDG_CACHE_HOME/torchsiggui`). Set the `TORCHSIGGUI_DATA_DIR` environment variable to use a different folder.
+Datasets and spectrogram images are stored in your user cache folder:
+
+- Linux: `~/.cache/torchsiggui` (or `$XDG_CACHE_HOME/torchsiggui`)
+- macOS: `~/Library/Caches/torchsiggui`
+- Windows: `%LOCALAPPDATA%\torchsiggui`
+
+Set the `TORCHSIGGUI_DATA_DIR` environment variable to use a different folder.
 
 ### Running on the Same Computer
 
@@ -87,7 +93,7 @@ Datasets are generated and stored on the remote server. The **Download** button 
 
 Open the printed URL in your browser to load the interface. Adjust the settings as needed, then test your input with the **Generate Sample** button near the bottom right of the window. When you're ready, create your dataset with the **Generate Dataset** button next to it. Give each dataset a unique name.
 
-After you press **Generate Dataset**, a new section appears in the bottom right of the window showing progress for that dataset. When the dataset is finished, click its **Download** button to save it to your machine. You can remove a dataset at any time with its **Cancel** button.
+After you press **Generate Dataset**, a new section appears in the bottom right of the window showing progress for that dataset. When the dataset is finished, click its **Download** button to save it to your machine as a `.zip` file. You can remove a dataset at any time with its **Cancel** button.
 
 ***All datasets and spectrogram images are removed from your device when you stop the server.***
 
