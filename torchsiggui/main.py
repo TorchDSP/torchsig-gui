@@ -12,22 +12,28 @@ import uvicorn
 
 from contextlib import asynccontextmanager
 from importlib.metadata import version, PackageNotFoundError
-from os import makedirs, getpid
+from os import environ, makedirs, getpid
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from shutil import rmtree
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # FASTAPI CONFIGURATION
 # Handles the configuration of server application instances
 
+# Host names the server answers to
+# - The server only listens on 127.0.0.1, and remote use goes through an SSH tunnel to localhost
+# - Rejecting other Host headers blocks DNS rebinding, where a web page points its own domain at 127.0.0.1
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
 # Defines a class to store the server configuration details
+# - Values come from TORCHSIGGUI_* environment variables, then a .env file, then the defaults below
 class AppConfig(BaseSettings):
   # Server settings
   port: int = 8000
-  workers: int = 1
 
   # Development settings
   dev_mode: bool = False
@@ -43,29 +49,22 @@ def get_version() -> str:
     from torchsiggui import __version__
     return __version__
 
-# Gets the configuration details from the console, .env files, and defaults if needed
-def get_config():
-  # Get the version number
-  version = get_version()
-
+# Parses the command arguments used to start the server
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
   # Set up a parser for command arguments used to start the server
   parser = argparse.ArgumentParser(prog='TorchSigGUI', description='Start the TorchSigGUI Server')
-  parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + version)
+  parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + get_version())
   parser.add_argument('-p', '--port', type=int, help='set the server port', metavar='P')
-  # parser.add_argument('-w', '--workers', type=int, help='set the number of workers', metavar='W')
   parser.add_argument('--dev', action='store_true', help=argparse.SUPPRESS)
 
-  # Use parse_known_args so it doesn't crash on unknown fastapi flags
-  args, _ = parser.parse_known_args()
+  # Parse the arguments, exiting with a usage message if any are invalid
+  return parser.parse_args(argv)
 
-  # Map user-provided arguments to Pydantic field names, if provided
-  cli_overrides = {}
-  if args.port: cli_overrides['port'] = args.port
-  # if args.workers: cli_overrides['workers'] = args.workers
-  if args.dev: cli_overrides['dev_mode'] = args.dev
-
-  # Determine and retrieve the configuration details, overriding with command input if present
-  return AppConfig(**cli_overrides)
+# Passes command arguments to the server through environment variables
+# - The server app is created by uvicorn, in a separate process when reloading, so it reads its settings from the environment
+def apply_args_to_environment(args: argparse.Namespace) -> None:
+  if args.port is not None: environ['TORCHSIGGUI_PORT'] = str(args.port)
+  if args.dev: environ['TORCHSIGGUI_DEV_MODE'] = 'true'
 
 # FASTAPI INITIALIZATION
 # Handles the creation of server application instances
@@ -86,10 +85,6 @@ async def remove_crashed_workers():
 @asynccontextmanager
 async def startup_shutdown(app: FastAPI):
   # STARTUP TASKS
-  # Acquire a lock so that other workers do not interfere with startup for this worker
-  # lock = FileLock(MODULE_LOCK_FILE, preserve_lock_file=False)
-  # with lock:
-
   # Create the dataset folder and database if they do not exist
   makedirs(DATASET_FOLDER, exist_ok=True)
   await run_query(queries.create_database)
@@ -109,9 +104,6 @@ async def startup_shutdown(app: FastAPI):
   yield
 
   # SHUTDOWN TASKS
-  # Acquire a lock so that other workers do not interfere with shutdown for this worker
-  # with lock:
-
   # Remove any records of crashed workers
   await remove_crashed_workers()
 
@@ -127,10 +119,13 @@ async def startup_shutdown(app: FastAPI):
 # Creates a configured server application instance
 def create_app():
   # Load the configuration details
-  config = get_config()
+  config = AppConfig()
 
   # Creates the FastAPI ASGI application instance
   app = FastAPI(lifespan=startup_shutdown)
+
+  # Reject requests addressed to any other host name
+  app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 
   # Add the CORS middleware
   cors_port = 3000 if config.dev_mode else config.port
@@ -156,13 +151,10 @@ def create_app():
 # MAIN FUNCTION
 # Starts the TorchSigGUI server
 
-def main():
-  # Load the configuration details
-  config = get_config()
+def main(argv: list[str] | None = None):
+  # Apply the command arguments on top of the environment and .env configuration details
+  apply_args_to_environment(parse_args(argv))
+  config = AppConfig()
 
-  # Run the server instances in the configured mode
-  if config.dev_mode:
-    uvicorn.run('torchsiggui.main:create_app', factory=True, host='127.0.0.1', reload=True)
-  else:
-    # uvicorn.run('torchsiggui.main:create_app', factory=True, host='127.0.0.1', port=config.port, workers=config.workers)
-    uvicorn.run('torchsiggui.main:create_app', factory=True, host='127.0.0.1', port=config.port)
+  # Run the server in the configured mode, reloading on code changes in development mode
+  uvicorn.run('torchsiggui.main:create_app', factory=True, host='127.0.0.1', port=config.port, reload=config.dev_mode)

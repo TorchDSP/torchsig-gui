@@ -23,7 +23,7 @@ function DownloadItem({ downloadID, download, cancelFunc }: { downloadID: string
             as="a"
             href={buildDownloadLink(downloadID)}
             download={download.filepath}
-            disabled={download.progress !== download.total}
+            disabled={!download.ready}
           >
             Download
           </Button>

@@ -46,9 +46,10 @@ report.xml
 
 # TorchSigGUI
 
-# AI agent instructions
+# AI agent instructions and local settings
 AGENTS.md
 CLAUDE.md
+.claude/
 
 # Keep license docs
 !**/LICENSE*

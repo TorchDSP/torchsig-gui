@@ -35,7 +35,6 @@ dependencies = [
   "aiofiles",
   "aiosql",
   "aiosqlite",
-  "filelock",
   "h5py",
   "matplotlib",
   "numpy",

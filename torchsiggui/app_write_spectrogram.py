@@ -1,20 +1,26 @@
+import asyncio
 import logging
-import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 
-from torchsiggui.files.file_io import DATASET_FOLDER
-from torchsiggui.files.database_io import (
+# Uses the non-interactive Agg backend, since the server only saves images and may run without a display
+matplotlib.use('Agg')
+
+from matplotlib.figure import Figure  # noqa: E402
+
+from torchsiggui.files.file_io import DATASET_FOLDER  # noqa: E402
+from torchsiggui.files.database_io import (  # noqa: E402
   generate_spectrogram_filename,
   run_query,
   queries
 )
-from torchsiggui.utils.torchsig_interface import torchsig_custom_dataset
+from torchsiggui.utils.torchsig_interface import torchsig_custom_dataset  # noqa: E402
 
 # Creates a logger for errors that happen during spectrogram creation
 logger = logging.getLogger(__name__)
 
 # Writes a dataset generator from user input
-async def _build_dataset(data_json):
+def _build_dataset(data_json):
   # Get the form data
   metadata_json = data_json['metadata']
   generation_json = data_json['generation']
@@ -30,44 +36,50 @@ async def _build_dataset(data_json):
   # Return the built dataset generator
   return dataset
 
+# Generates a signal from user input and saves an image of it
+#   Runs in a worker thread, so the slow TorchSig and plotting work does not block the server
+#   Uses a standalone Figure instead of pyplot, since pyplot's global state is not thread-safe
+def _write_sample_image(data_json, image_name) -> None:
+  # Create the dataset and get a sample from it
+  dataset = _build_dataset(data_json)
+  sample = next(dataset)
+  data = sample.data
+
+  # Plot the sample image
+  fig = Figure(figsize=(12, 4))
+  ax = fig.add_subplot(1, 1, 1)
+  fs = dataset.sample_rate
+
+  # A Spectrogram transform outputs a 2D real array (frequency x time, highest frequency in row 0)
+  if data.ndim == 2 and not np.iscomplexobj(data):
+    duration = data_json['metadata']['num_iq_samples_dataset'] / fs
+    img = ax.imshow(data, aspect='auto', origin='upper', cmap='viridis',
+      extent=[0, duration, -fs / 2, fs / 2])
+    fig.colorbar(img, ax=ax, label='Power (dB)')
+    ax.set_xlabel('Time (sec)')
+    ax.set_ylabel('Frequency (Hz)')
+
+  # Otherwise the data is I/Q, so plot it in the time domain
+  else:
+    t = np.arange(0, len(data)) / fs
+    ax.plot(t, np.real(data), alpha=0.5, label='Real')
+    ax.plot(t, np.imag(data), alpha=0.5, label='Imag')
+    ax.set_xlim([t[0], t[-1]])
+    ax.set_xlabel('Time (sec)')
+    ax.set_ylabel('Amplitude')
+    ax.grid()
+
+  # Save the image
+  fig.savefig(DATASET_FOLDER / image_name)
+
 # Generates an image for a signal generated from user input
 async def create_sample_image(data_json) -> None:
   # Generate a new file name
   image_name = await generate_spectrogram_filename()
 
   try:
-    # Create the dataset and get a sample from it
-    dataset = await _build_dataset(data_json)
-    sample = next(dataset)
-    data = sample.data
-
-    # Plot the sample image
-    fig = plt.figure(figsize=(12, 4))
-    ax = fig.add_subplot(1, 1, 1)
-    fs = dataset.sample_rate
-
-    # A Spectrogram transform outputs a 2D real array (frequency x time, highest frequency in row 0)
-    if data.ndim == 2 and not np.iscomplexobj(data):
-      duration = data_json['metadata']['num_iq_samples_dataset'] / fs
-      img = ax.imshow(data, aspect='auto', origin='upper', cmap='viridis',
-        extent=[0, duration, -fs / 2, fs / 2])
-      fig.colorbar(img, ax=ax, label='Power (dB)')
-      ax.set_xlabel('Time (sec)')
-      ax.set_ylabel('Frequency (Hz)')
-
-    # Otherwise the data is I/Q, so plot it in the time domain
-    else:
-      t = np.arange(0, len(data)) / fs
-      ax.plot(t, np.real(data), alpha=0.5, label='Real')
-      ax.plot(t, np.imag(data), alpha=0.5, label='Imag')
-      ax.set_xlim([t[0], t[-1]])
-      ax.set_xlabel('Time (sec)')
-      ax.set_ylabel('Amplitude')
-      ax.grid()
-
-    # Save the image, and close the plotter
-    plt.savefig(DATASET_FOLDER / image_name)
-    plt.close()
+    # Create and save the sample image in a worker thread
+    await asyncio.to_thread(_write_sample_image, data_json, image_name)
 
     # Update the stored filename to match the image saved
     await run_query(queries.update_complete_spectrogram)

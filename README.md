@@ -93,52 +93,7 @@ After you press **Generate Dataset**, a new section appears in the bottom right 
 
 ## Development
 
-Development runs two servers: the Python API that wraps TorchSig, and the web interface that connects to it.
-
-### Setup
-
-Development requires Node.js &ge; 20.9 in addition to the prerequisites above. From the cloned repository, install the Python package with its development dependencies, then the interface dependencies:
-
-```
-pip install -e ".[dev]"
-npm install
-```
-
-### Starting the TorchSig API
-
-Start the API first, since TorchSigGUI relies on it. From the cloned repository, run:
-
-```
-torchsiggui --dev
-```
-
-This starts a development server for the API that reloads on changes. If you have the interface open, refresh the page to re-establish the connection.
-
-### Starting the TorchSigGUI Interface
-
-From a new terminal in the cloned repository, run:
-
-```
-npm run dev
-```
-
-This opens a development page showing the current state of the interface. Interface changes re-render automatically. You don't need to restart the API for interface changes, but you do need to restart the interface for changes made to the API.
-
-### Testing
-
-The repository uses pytest to test the API. From the cloned repository, run:
-
-```
-pytest
-```
-
-To run the same checks as CI (linting, type checking, the API tests, and the interface build), run:
-
-```
-make check
-```
-
-The interface is served from the committed build in `torchsiggui/webbuild`, so after changing the interface, rebuild it with `make build-web` and commit the result. Run `make help` to list the other available tasks.
+To set up a development environment, run the checks, and open a pull request, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

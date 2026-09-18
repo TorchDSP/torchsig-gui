@@ -12,7 +12,7 @@ from torchsiggui.files.database_io import get_file_info
 @pytest.mark.asyncio
 async def test_dataset_non_spectrogram(affixed_test_dataset_file):
   # Define the file id for the dataset file
-  test_file_id = await affixed_test_dataset_file
+  test_file_id = affixed_test_dataset_file
 
   # Get the dataset file directory by the id
   file_info = await get_file_info()
@@ -32,7 +32,7 @@ async def test_dataset_non_spectrogram(affixed_test_dataset_file):
 @pytest.mark.asyncio
 async def test_dataset_spectrogram(affixed_test_spectrogram_dataset_file):
   # Define the file id for the dataset file
-  test_file_id = await affixed_test_spectrogram_dataset_file
+  test_file_id = affixed_test_spectrogram_dataset_file
 
   # Get the dataset file directory by the id
   file_info = await get_file_info()

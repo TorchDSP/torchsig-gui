@@ -1,16 +1,25 @@
 # PYTEST CONFTEST FILE
 # Defines fixtures for common code chunks used in other tests
 
-from fastapi.testclient import TestClient
+import os
+import tempfile
 
-import json
-import pytest
-import pytest_asyncio
-from pathlib import Path
+# Keeps test data out of the user's real data folder, so tests never touch a running server's datasets
+# - Must be set before torchsiggui is imported, since the data folder is resolved at import time
+os.environ.setdefault('TORCHSIGGUI_DATA_DIR', tempfile.mkdtemp(prefix='torchsiggui-test-'))
 
-from torchsiggui.main import create_app
-from torchsiggui.app_write_dataset import create_dataset_file
-from torchsiggui.files.database_io import get_file_info
+from fastapi.testclient import TestClient  # noqa: E402
+
+import asyncio  # noqa: E402
+import json  # noqa: E402
+import time  # noqa: E402
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from torchsiggui.main import create_app  # noqa: E402
+from torchsiggui.app_write_dataset import create_dataset_file  # noqa: E402
+from torchsiggui.files.database_io import get_file_info  # noqa: E402
 
 # Resolves test data relative to this file so the tests run from any directory
 TEST_DATA = Path(__file__).resolve().parent / 'test_data'
@@ -32,6 +41,24 @@ async def generate_test_dataset_file(json_filename):
   # Return the test file id
   return test_file_id
 
+# Runs a coroutine and returns the longest time, in seconds, that the event loop went without running other tasks
+async def measure_event_loop_gap(coroutine):
+  # Start the coroutine as a separate task
+  task = asyncio.create_task(coroutine)
+
+  # Tick the event loop until the task finishes, recording the longest gap between ticks
+  max_gap = 0.0
+  last_tick = time.monotonic()
+  while not task.done():
+    await asyncio.sleep(0.01)
+    now = time.monotonic()
+    max_gap = max(max_gap, now - last_tick)
+    last_tick = now
+
+  # Raise any error from the task, then return the longest gap
+  await task
+  return max_gap
+
 # CLIENT FIXTURES
 # Affixes a test client object for creating API calls
 @pytest.fixture
@@ -40,7 +67,8 @@ def affixed_client():
   app = create_app()
 
   # Start a test client that listens to the server and return the running test client
-  with TestClient(app) as client:
+  # - Uses localhost, since the server rejects requests addressed to other host names
+  with TestClient(app, base_url='http://localhost') as client:
     yield client
 
 # DATASET FIXTURES
@@ -48,7 +76,7 @@ def affixed_client():
 @pytest_asyncio.fixture
 async def affixed_test_dataset_file(affixed_client):
   # Generate the dataset file and get its id
-  test_file_id = generate_test_dataset_file(TEST_DATA / 'data_default.json')
+  test_file_id = await generate_test_dataset_file(TEST_DATA / 'data_default.json')
 
   # Return the test file id
   yield test_file_id
@@ -57,7 +85,7 @@ async def affixed_test_dataset_file(affixed_client):
 @pytest_asyncio.fixture
 async def affixed_test_spectrogram_dataset_file(affixed_client):
   # Generate the dataset file and get its id
-  test_file_id = generate_test_dataset_file(TEST_DATA / 'data_spectrogram.json')
+  test_file_id = await generate_test_dataset_file(TEST_DATA / 'data_spectrogram.json')
 
   # Return the test file id
   yield test_file_id

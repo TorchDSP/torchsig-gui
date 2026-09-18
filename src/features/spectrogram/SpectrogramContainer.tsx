@@ -11,6 +11,7 @@ import Card from "react-bootstrap/Card";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Button from "react-bootstrap/Button";
+import Alert from "react-bootstrap/Alert";
 
 // Defines a function to reformat the relevant details from the store
 function extractFormState(storeRef: AppStore) {
@@ -39,6 +40,18 @@ function extractFormState(storeRef: AppStore) {
   });
 }
 
+// Gets a readable message from a failed API request
+// - FastAPI errors carry their message in the "detail" field of the response body
+function getErrorMessage(error: unknown) {
+  if (error && typeof error === "object" && "data" in error) {
+    const data = (error as { data: unknown }).data;
+    if (data && typeof data === "object" && "detail" in data && typeof data.detail === "string") {
+      return data.detail;
+    }
+  }
+  return "The dataset could not be started. Check the server console for details.";
+}
+
 // Contains all spectrogram details to display to the user
 export default function SpectrogramContainer() {
   // Get a reference to the store
@@ -54,6 +67,9 @@ export default function SpectrogramContainer() {
 
   // Keep track of whether the next spectrogram image has loaded
   const [ hasLoaded, setHasLoaded ] = useState(true);
+
+  // Keep track of the error from the last dataset request, if any
+  const [ datasetError, setDatasetError ] = useState("");
 
   // Return the spectrogram details
   return (
@@ -73,15 +89,25 @@ export default function SpectrogramContainer() {
         </Col>
         <Col md="auto">
           <Button
-            onClick={ () => {
+            onClick={ async () => {
               const formState = extractFormState(storeRef);
-              saveNewDataset(formState);
+              try {
+                setDatasetError("");
+                await saveNewDataset(formState).unwrap();
+              } catch (error) {
+                setDatasetError(getErrorMessage(error));
+              }
             }}
           >
             Generate Dataset
           </Button>
         </Col>
       </Row>
+      {datasetError && (
+        <Alert variant="danger" dismissible onClose={() => setDatasetError("")}>
+          {datasetError}
+        </Alert>
+      )}
       <DownloadList downloadMap={data?.downloadMap ?? {}} />
     </Card>
   );

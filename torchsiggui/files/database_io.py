@@ -8,6 +8,10 @@ from torchsiggui.files.file_io import DATABASE, QUERY_FILE
 # Creates an object to reference database queries
 queries = aiosql.from_path(QUERY_FILE, 'aiosqlite')
 
+# Raised when a new file entry uses a file path that is already in use
+class DuplicateFileError(ValueError):
+  pass
+
 # Wraps handlers for opening database connections
 @asynccontextmanager
 async def get_db():
@@ -21,11 +25,11 @@ async def get_db():
   await db.execute('PRAGMA journal_mode=WAL')
   await db.execute('PRAGMA busy_timeout=5000')
 
-  # Yield the database connection
-  yield db
-
-  # Close the database connection when done
-  await db.close()
+  # Yield the database connection, closing it when done even if a query fails
+  try:
+    yield db
+  finally:
+    await db.close()
 
 # Runs a query and returns the parsed result
 async def run_query(sql_query, **kwargs):
@@ -91,6 +95,7 @@ async def get_file_info():
       result = dict()
       for row in raw_result:
         file_id = row.pop('id')
+        row['ready'] = bool(row['ready'])
         result[file_id] = row
 
       # Return the parsed results
@@ -108,8 +113,10 @@ async def generate_file_entry(total: int, filepath: str):
       file_id = generate()
       await run_query(queries.add_file_entry, file_id=file_id, total=total, filepath=filepath)
       return file_id
-    # If the row add fails, try again
-    except aiosqlite.IntegrityError:
+    # If the file id collides, try again; if the file path is already in use, stop
+    except aiosqlite.IntegrityError as error:
+      if 'filepath' in str(error):
+        raise DuplicateFileError(f'{filepath} already exists') from error
       continue
 
 # Generates a new spectrogram filename

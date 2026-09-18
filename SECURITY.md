@@ -14,6 +14,7 @@ TorchSigGUI is a single-user tool meant to run on your own machine, or on a serv
 
 - **No authentication.** Anyone who can reach the server can use the interface, generate datasets, download them, and cancel them.
 - **Local connections only.** The server listens on `127.0.0.1`, so other machines on the network cannot connect to it. To use it from another computer, forward the port over SSH as described in the [README](README.md#running-on-a-remote-server).
+- **Local host names only.** The server rejects requests addressed to any host name other than `localhost` or `127.0.0.1`. This blocks DNS rebinding, where a web page points its own domain at your machine to reach the server. Open the interface at `http://localhost:<port>` or `http://127.0.0.1:<port>`.
 - **Do not expose the server.** Do not bind it to a public address, or put it behind a reverse proxy or port forward that is reachable by others, without adding your own authentication in front of it.
 - **Shared servers.** On a machine with other users, anyone logged in to that machine can connect to `127.0.0.1` and use your running server. Avoid leaving it running on shared machines when you are not using it.
 - **Resource use.** Dataset generation can use large amounts of disk space, memory, CPU, and GPU time. Anyone with access to the interface can start this work.

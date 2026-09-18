@@ -6,6 +6,7 @@ type DownloadInfo = {
   progress: number,
   total: number,
   filepath: string,
+  ready: boolean,
 };
 
 // Defines a type for storing sample and file information

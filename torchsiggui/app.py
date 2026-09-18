@@ -1,24 +1,24 @@
 import torchsiggui.app_lookup as app_lookup
-from torchsiggui.app_write_dataset import create_dataset_file
+from torchsiggui.app_write_dataset import create_dataset_file, track_new_file
 from torchsiggui.app_write_spectrogram import create_sample_image
 
 from torchsiggui.files.file_io import DATASET_FOLDER
 from torchsiggui.files.database_io import (
   run_query,
   queries,
-  get_file_info
+  get_file_info,
+  DuplicateFileError
 )
 
 import aiofiles
 
-from asyncio import sleep, create_task
+from asyncio import sleep, create_task, to_thread
 from pathlib import Path
 from shutil import rmtree
 from typing import AsyncGenerator
 
 from fastapi import (
   APIRouter,
-  Request,
   BackgroundTasks,
   WebSocket,
   WebSocketDisconnect,
@@ -55,41 +55,34 @@ def get_dataset_defaults():
 # FASTAPI WRITE HANDLERS
 # Connects write requests from the client to API functions and launches background write tasks
 
+# FastAPI rejects request bodies that are not JSON objects with a 422 response before these handlers run
+
 @router.post('/api/write-sample')
-def post_write_sample(data_json: dict, request: Request, background_tasks: BackgroundTasks):
-  # Get the JSON data, if it exists
-  content_type = request.headers.get('Content-Type')
-  if (content_type != 'application/json'):
-    return { 'error': 'invalid data content type' }
+def post_write_sample(data_json: dict, background_tasks: BackgroundTasks):
+  # Start generating the signal sample
+  background_tasks.add_task(create_sample_image, data_json)
 
-  # Attempt to start generating the signal sample
-  try:
-    background_tasks.add_task(create_sample_image, data_json)
-
-  # If something fails, return the error message
-  except Exception as error:
-    return { 'message': str(error) }
-  # If everything works, return a success message
-  else:
-    return { 'message': 'success' }
+  # Return a success message
+  return { 'message': 'success' }
 
 @router.post('/api/write-dataset')
-def post_write_dataset(data_json: dict, request: Request, background_tasks: BackgroundTasks):
-  # Get the JSON data, if it exists
-  content_type = request.headers.get('Content-Type')
-  if (content_type != 'application/json'):
-    return { 'error': 'invalid data content type' }
-
-  # Attempt to start building the dataset creator and creating the dataset file
+async def post_write_dataset(data_json: dict, background_tasks: BackgroundTasks):
+  # Start tracking the new dataset file before responding, so name problems are reported to the user
   try:
-    background_tasks.add_task(create_dataset_file, data_json)
+    file_id = await track_new_file(data_json)
+  except DuplicateFileError:
+    name = data_json['dataset']['root']
+    raise HTTPException(status_code=409, detail=f"A dataset named '{name}' already exists. Choose a different name.")
+  except KeyError as error:
+    raise HTTPException(status_code=400, detail=f'Missing dataset field: {error}')
+  except (TypeError, ValueError) as error:
+    raise HTTPException(status_code=400, detail=str(error))
 
-  # If something fails, return the error message
-  except Exception as error:
-    return { 'message': str(error) }
-  # If everything works, return a success message
-  else:
-    return { 'message': 'success' }
+  # Start building the dataset creator and creating the dataset file
+  background_tasks.add_task(create_dataset_file, data_json, file_id)
+
+  # Return a success message
+  return { 'message': 'success' }
 
 # FASTAPI DOWNLOAD HANDLERS
 # Connects download requests from the client to API functions and handles API-stored dataset files
@@ -108,9 +101,17 @@ async def get_download_dataset(file_id: str):
   if file_id not in file_info:
     raise HTTPException(status_code=404, detail='File not found')
 
+  # Raise an exception if the dataset is still being written, has failed, or was cancelled
+  if not file_info[file_id]['ready']:
+    raise HTTPException(status_code=409, detail='Dataset is not ready to download')
+
   # Get the file path from the file id
   file_name = file_info[file_id]['filepath']
   file_path = DATASET_FOLDER / file_name
+
+  # Raise an exception if the archive file is missing
+  if not file_path.is_file():
+    raise HTTPException(status_code=404, detail='File not found')
 
   # Return a stream for downloading the file
   return StreamingResponse(
@@ -147,10 +148,13 @@ async def delete_cancel_dataset(file_id: str):
     if is_complete:
       break
 
-  # Delete the cancelled file
+    # Return control to the FastAPI event loop so the background task can finish
+    await sleep(0.1)
+
+  # Delete the cancelled file, in a worker thread since large datasets can take a while to remove
   await run_query(queries.delete_file_entry, file_id=file_id)
   if folder_path.exists():
-    rmtree(folder_path)
+    await to_thread(rmtree, folder_path)
   archive_path.unlink(missing_ok=True)
 
   # Return a success message
@@ -210,5 +214,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
   # Exit the loop when the client disconnects
   except WebSocketDisconnect:
+    pass
+
+  # Stop the feed tasks however the connection ends
+  finally:
     sample_task.cancel()
     file_task.cancel()

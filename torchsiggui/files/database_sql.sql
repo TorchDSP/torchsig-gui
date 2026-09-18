@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS file_table (
   total INTEGER NOT NULL,
   filepath TEXT NOT NULL UNIQUE,
   complete INTEGER NOT NULL CHECK (complete IN (0, 1)),
+  ready INTEGER NOT NULL CHECK (ready IN (0, 1)),
   cancelled INTEGER NOT NULL CHECK (cancelled IN (0, 1))
 );
 CREATE TABLE IF NOT EXISTS spectrogram_table (
@@ -56,7 +57,7 @@ DELETE FROM worker_table WHERE pid = :process_id;
 
 -- name: get_file_info()
 -- Queries the file info stored in the file table
-SELECT id, current_status, progress, total, filepath FROM file_table;
+SELECT id, current_status, progress, total, filepath, ready FROM file_table;
 
 -- name: get_is_cancelled(file_id)$
 -- Queries whether the write for a file is cancelled
@@ -72,8 +73,8 @@ SELECT complete FROM file_table WHERE id = :file_id;
 
 -- name: add_file_entry(file_id, total, filepath)!
 -- Adds a file entry to the file table
-INSERT INTO file_table (id, current_status, progress, total, filepath, complete, cancelled)
-  VALUES (:file_id, '', 0, :total, :filepath, 0, 0);
+INSERT INTO file_table (id, current_status, progress, total, filepath, complete, ready, cancelled)
+  VALUES (:file_id, '', 0, :total, :filepath, 0, 0, 0);
 
 -- name: update_current_status(file_id, new_status)!
 -- Updates the current status for a file entry
@@ -92,11 +93,25 @@ UPDATE file_table
   WHERE id = :file_id;
 
 -- name: complete_file(file_id, complete_status)!
--- Marks a file entry as complete
+-- Marks a file entry as complete and, unless cancelled, ready to download
+UPDATE file_table
+  SET complete = 1,
+    ready = CASE
+      WHEN cancelled = 0 THEN 1
+      ELSE 0
+    END,
+    current_status = CASE
+      WHEN cancelled = 0 THEN :complete_status
+      ELSE current_status
+    END
+  WHERE id = :file_id;
+
+-- name: fail_file(file_id, error_status)!
+-- Marks a file entry as complete without making it ready to download
 UPDATE file_table
   SET complete = 1,
     current_status = CASE
-      WHEN cancelled = 0 THEN :complete_status
+      WHEN cancelled = 0 THEN :error_status
       ELSE current_status
     END
   WHERE id = :file_id;
